@@ -1,11 +1,9 @@
-import { languageList, useTranslation } from '@pancakeswap/localization'
+import { useTranslation } from '@pancakeswap/localization'
 import { Menu as UikitMenu, footerLinks, useModal } from '@pancakeswap/uikit'
-import { BIG_ZERO } from '@pancakeswap/utils/bigNumber'
 import { NextLinkFromReactRouter } from '@pancakeswap/widgets-internal'
 import USCitizenConfirmModal from 'components/Modal/USCitizenConfirmModal'
 import { NetworkSwitcher } from 'components/NetworkSwitcher'
 import { useActiveChainId } from 'hooks/useActiveChainId'
-import { useCakePrice } from 'hooks/useCakePrice'
 import { usePerpUrl } from 'hooks/usePerpUrl'
 import useTheme from 'hooks/useTheme'
 import { IdType, useUserNotUsCitizenAcknowledgement } from 'hooks/useUserIsUsCitizenAcknowledgement'
@@ -26,11 +24,9 @@ const LinkComponent = (linkProps) => {
 }
 
 const Menu = (props) => {
-  const { enabled } = useWebNotifications()
   const { chainId } = useActiveChainId()
   const { isDark, setTheme } = useTheme()
-  const cakePrice = useCakePrice()
-  const { currentLanguage, setLanguage, t } = useTranslation()
+  const { currentLanguage, t } = useTranslation()
   const { pathname } = useRouter()
   const perpUrl = usePerpUrl({ chainId, isDark, languageCode: currentLanguage.code })
   const [perpConfirmed] = useUserNotUsCitizenAcknowledgement(IdType.PERPETUALS)
@@ -82,12 +78,6 @@ const Menu = (props) => {
       linkComponent={LinkComponent}
       rightSide={
         <>
-          <GlobalSettings mode={SettingsMode.GLOBAL} />
-          {enabled && (
-            <Suspense fallback={null}>
-              <Notifications />
-            </Suspense>
-          )}
           <NetworkSwitcher />
           <UserMenu />
         </>
@@ -97,9 +87,7 @@ const Menu = (props) => {
       isDark={isDark}
       toggleTheme={toggleTheme}
       currentLang={currentLanguage.code}
-      langs={languageList}
-      setLang={setLanguage}
-      cakePriceUsd={cakePrice.eq(BIG_ZERO) ? undefined : cakePrice}
+      showCakePrice={false}
       links={menuItems}
       subLinks={
         activeSubMenuItem?.overrideSubNavItems ??
@@ -112,8 +100,7 @@ const Menu = (props) => {
       activeItem={activeMenuItem?.href}
       activeSubItem={activeSubMenuItem?.href}
       activeSubItemChildItem={activeSubChildMenuItem?.href}
-      buyCakeLabel={t('Buy CAKE')}
-      buyCakeLink="/swap?outputCurrency=0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82&chainId=56"
+      showLangSelector={false}
       {...props}
     />
   )
