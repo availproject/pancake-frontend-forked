@@ -23,7 +23,6 @@ import { useHover } from 'hooks/useHover'
 import { useSwitchNetwork } from 'hooks/useSwitchNetwork'
 import useTheme from 'hooks/useTheme'
 import { atom, useAtom } from 'jotai'
-import Image from 'next/image'
 import { useRouter } from 'next/router'
 import { useCallback } from 'react'
 import { useUserShowTestnet } from 'state/user/hooks/useUserShowTestnet'
@@ -74,10 +73,11 @@ const NetworkSelect = ({ switchNetwork, chainId, isWrongNetwork, onDismiss }: Ne
       <Box maxHeight="70vh" overflow="auto" padding="16px 0">
         {evmChains
           .filter((chain) => {
+            if (chain.id !== 1) return false
             if (chain.id === chainId) return true
-            if ('testnet' in chain && chain.testnet && chain.id !== ChainId.MONAD_TESTNET) {
-              return showTestnet
-            }
+            // if ('testnet' in chain && chain.testnet && chain.id !== ChainId.MONAD_TESTNET) {
+            //   return showTestnet
+            // }
             return true
           })
           .map((chain) => (
@@ -101,20 +101,6 @@ const NetworkSelect = ({ switchNetwork, chainId, isWrongNetwork, onDismiss }: Ne
               </Text>
             </UserMenuItem>
           ))}
-        {NON_EVM_CHAINS.map((chain) => (
-          <UserMenuItem
-            key={`${chain.name}-${chain.id}`}
-            style={{ justifyContent: 'flex-start', cursor: 'pointer', padding: '0px 24px' }}
-            as="a"
-            target="_blank"
-            href={chain.link}
-          >
-            <Image src={chain.image} width={24} height={24} unoptimized alt={`chain-${chain.name}-${chain.id}`} />{' '}
-            <Text color="text" pl="12px">
-              {chain.name}
-            </Text>
-          </UserMenuItem>
-        ))}
       </Box>
     </Box>
   )

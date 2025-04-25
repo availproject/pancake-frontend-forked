@@ -1,5 +1,5 @@
 import { useTranslation } from '@pancakeswap/localization'
-import { Currency, CurrencyAmount, Price, Trade, TradeType } from '@pancakeswap/sdk'
+import { ChainId, Currency, CurrencyAmount, Price, Trade, TradeType } from '@pancakeswap/sdk'
 import { CAKE, STABLE_COIN, USDC, USDT } from '@pancakeswap/tokens'
 import { PairDataTimeWindowEnum } from '@pancakeswap/uikit'
 import tryParseAmount from '@pancakeswap/utils/tryParseAmount'
@@ -235,9 +235,11 @@ export function queryParametersToSwapState(
   return {
     [Field.INPUT]: {
       currencyId: inputCurrency,
+      chainId: parsedQs.inputCurrencyChainId as unknown as ChainId,
     },
     [Field.OUTPUT]: {
       currencyId: outputCurrency,
+      chainId: parsedQs.outputCurrencyChainId as unknown as ChainId,
     },
     typedValue: parseTokenAmountURLParameter(parsedQs.exactAmount),
     independentField: parseIndependentFieldURLParameter(parsedQs.exactField),
@@ -273,6 +275,7 @@ export function useDefaultsFromURLSearch():
         field: parsed.independentField,
         inputCurrencyId: parsed[Field.INPUT].currencyId,
         outputCurrencyId: parsed[Field.OUTPUT].currencyId,
+
         recipient: null,
       }),
     )

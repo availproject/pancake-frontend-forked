@@ -1,5 +1,5 @@
 import { useTranslation } from '@pancakeswap/localization'
-import { Currency, CurrencyAmount, Percent } from '@pancakeswap/sdk'
+import { ChainId, Currency, CurrencyAmount, Percent } from '@pancakeswap/sdk'
 import { Text } from '@pancakeswap/uikit'
 import { formatAmount } from '@pancakeswap/utils/formatFractions'
 import replaceBrowserHistoryMultiple from '@pancakeswap/utils/replaceBrowserHistoryMultiple'
@@ -7,7 +7,7 @@ import { ReactNode, useCallback, useMemo } from 'react'
 
 import CurrencyInputPanelSimplify from 'components/CurrencyInputPanelSimplify'
 import { CommonBasesType } from 'components/SearchModal/types'
-import { useCurrency } from 'hooks/Tokens'
+import { useCurrency, useSwapChain } from 'hooks/Tokens'
 import { Field } from 'state/swap/actions'
 import { useDefaultsFromURLSearch, useSwapState } from 'state/swap/hooks'
 import { useSwapActionHandlers } from 'state/swap/useSwapActionHandlers'
@@ -31,19 +31,29 @@ interface Props {
   isUserInsufficientBalance?: boolean
 }
 
-export function FormMain({ inputAmount, outputAmount, tradeLoading, isUserInsufficientBalance }: Props) {
+export function FormMain({ inputAmount, outputAmount, tradeLoading, isUserInsufficientBalance }: Readonly<Props>) {
   const { address: account } = useAccount()
   const { t } = useTranslation()
   const warningSwapHandler = useWarningImport()
   const {
     independentField,
     typedValue,
-    [Field.INPUT]: { currencyId: inputCurrencyId },
-    [Field.OUTPUT]: { currencyId: outputCurrencyId },
+    [Field.INPUT]: { currencyId: inputCurrencyId, chainId: inputCurrencyChainId },
+    [Field.OUTPUT]: { currencyId: outputCurrencyId, chainId: outputCurrencyChainId },
   } = useSwapState()
+  console.log('form main', {
+    inputCurrencyId,
+    inputCurrencyChainId,
+    outputCurrencyId,
+    outputCurrencyChainId,
+  })
   const isWrapping = useIsWrapping()
   const inputCurrency = useCurrency(inputCurrencyId)
   const outputCurrency = useCurrency(outputCurrencyId)
+
+  const { chain: inputChain } = useSwapChain(inputCurrencyChainId, 'input')
+  const { chain: outputChain } = useSwapChain(outputCurrencyChainId, 'output')
+
   const { onCurrencySelection, onUserInput } = useSwapActionHandlers()
   const [inputBalance] = useCurrencyBalances(account, [inputCurrency, outputCurrency])
   const maxAmountInput = useMemo(() => maxAmountSpend(inputBalance), [inputBalance])
@@ -69,36 +79,58 @@ export function FormMain({ inputAmount, outputAmount, tradeLoading, isUserInsuff
   const handleCurrencySelect = useCallback(
     (
       newCurrency: Currency,
+      newChainId: ChainId | undefined,
       field: Field,
       currentInputCurrencyId: string | undefined,
+      currentInputChainId: ChainId | undefined,
       currentOutputCurrencyId: string | undefined,
+      currentOutputChainId: ChainId | undefined,
     ) => {
-      onCurrencySelection(field, newCurrency)
-
+      onCurrencySelection(field, newCurrency, newChainId)
       warningSwapHandler(newCurrency)
-
       const isInput = field === Field.INPUT
       const oldCurrencyId = isInput ? currentInputCurrencyId : currentOutputCurrencyId
       const otherCurrencyId = isInput ? currentOutputCurrencyId : currentInputCurrencyId
       const newCurrencyId = currencyId(newCurrency)
+      const oldChainId = isInput ? currentOutputChainId : currentInputChainId
+      const otherChainId = isInput ? currentInputChainId : currentOutputChainId
       replaceBrowserHistoryMultiple({
         ...(newCurrencyId === otherCurrencyId && { [isInput ? 'outputCurrency' : 'inputCurrency']: oldCurrencyId }),
+        ...(newChainId === otherChainId && {
+          [isInput ? 'outputCurrencyChainId' : 'inputCurrencyChainId']: oldChainId,
+        }),
         [isInput ? 'inputCurrency' : 'outputCurrency']: newCurrencyId,
+        [isInput ? 'inputCurrencyChainId' : 'outputCurrencyChainId']: newChainId,
       })
     },
     [onCurrencySelection, warningSwapHandler],
   )
   const handleInputSelect = useCallback(
-    (newCurrency: Currency) =>
-      handleCurrencySelect(newCurrency, Field.INPUT, inputCurrencyId || '', outputCurrencyId || ''),
-    [handleCurrencySelect, inputCurrencyId, outputCurrencyId],
+    (newCurrency: Currency, newChainId?: ChainId) =>
+      handleCurrencySelect(
+        newCurrency,
+        newChainId ?? undefined,
+        Field.INPUT,
+        inputCurrencyId ?? '',
+        inputCurrencyChainId ?? undefined,
+        outputCurrencyId ?? '',
+        outputCurrencyChainId ?? undefined,
+      ),
+    [handleCurrencySelect, inputCurrencyId, inputCurrencyChainId, outputCurrencyId, outputCurrencyChainId],
   )
   const handleOutputSelect = useCallback(
-    (newCurrency: Currency) =>
-      handleCurrencySelect(newCurrency, Field.OUTPUT, inputCurrencyId || '', outputCurrencyId || ''),
-    [handleCurrencySelect, inputCurrencyId, outputCurrencyId],
+    (newCurrency: Currency, newChainId?: ChainId) =>
+      handleCurrencySelect(
+        newCurrency,
+        newChainId ?? undefined,
+        Field.OUTPUT,
+        inputCurrencyId ?? '',
+        inputCurrencyChainId ?? undefined,
+        outputCurrencyId ?? '',
+        outputCurrencyChainId ?? undefined,
+      ),
+    [handleCurrencySelect, inputCurrencyId, inputCurrencyChainId, outputCurrencyId, outputCurrencyChainId],
   )
-
   const isTypingInput = independentField === Field.INPUT
   const inputValue = useMemo(
     () => typedValue && (isTypingInput ? typedValue : formatAmount(inputAmount) || ''),
@@ -125,6 +157,7 @@ export function FormMain({ inputAmount, outputAmount, tradeLoading, isUserInsuff
         maxAmount={maxAmountInput}
         showQuickInputButton
         currency={inputCurrency}
+        chainId={inputChain?.id}
         onUserInput={handleTypeInput}
         onPercentInput={handlePercentInput}
         onMax={handleMaxInput}
@@ -136,8 +169,10 @@ export function FormMain({ inputAmount, outputAmount, tradeLoading, isUserInsuff
             {t('From')}
           </Text>
         }
+        enableChainIdSelect
         isUserInsufficientBalance={isUserInsufficientBalance}
       />
+
       <FlipButton />
       <CurrencyInputPanelSimplify
         id="swap-currency-output"
@@ -149,6 +184,7 @@ export function FormMain({ inputAmount, outputAmount, tradeLoading, isUserInsuff
         label={isTypingInput && !isWrapping ? t('To (estimated)') : t('To')}
         defaultValue={isWrapping ? typedValue : outputValue}
         currency={outputCurrency}
+        chainId={outputChain?.id}
         onUserInput={handleTypeOutput}
         onCurrencySelect={handleOutputSelect}
         otherCurrency={inputCurrency}
@@ -158,7 +194,9 @@ export function FormMain({ inputAmount, outputAmount, tradeLoading, isUserInsuff
             {t('To')}
           </Text>
         }
+        enableChainIdSelect
       />
+
       <AssignRecipientButton />
       <Recipient />
     </FormContainer>
