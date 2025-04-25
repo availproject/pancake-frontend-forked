@@ -153,7 +153,13 @@ export function V4SwapForm() {
       )}
       <ButtonAndDetailsPanel
         swapCommitButton={
-          <CommitButton order={bestOrder} tradeLoaded={tradeLoaded} tradeError={tradeError} {...commitHooks} />
+          <CommitButton
+            order={bestOrder}
+            tradeLoaded={tradeLoaded}
+            tradeError={tradeError}
+            {...commitHooks}
+            withArcana
+          />
         }
         mevSlot={<MevSwapDetail />}
         pricingAndSlippage={

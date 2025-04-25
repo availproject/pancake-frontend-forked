@@ -1,6 +1,6 @@
 import { useTranslation } from '@pancakeswap/localization'
 import { ChainId, Currency, CurrencyAmount, Price, Trade, TradeType } from '@pancakeswap/sdk'
-import { CAKE, STABLE_COIN, USDC, USDT } from '@pancakeswap/tokens'
+import { USDT } from '@pancakeswap/tokens'
 import { PairDataTimeWindowEnum } from '@pancakeswap/uikit'
 import tryParseAmount from '@pancakeswap/utils/tryParseAmount'
 import { useQuery } from '@tanstack/react-query'
@@ -263,11 +263,7 @@ export function useDefaultsFromURLSearch():
 
   useEffect(() => {
     if (!chainId || !native || !isReady) return
-    const parsed = queryParametersToSwapState(
-      query,
-      native.symbol,
-      CAKE[chainId]?.address ?? STABLE_COIN[chainId]?.address ?? USDC[chainId]?.address ?? USDT[chainId]?.address,
-    )
+    const parsed = queryParametersToSwapState(query, native.symbol, USDT[chainId]?.address)
 
     dispatch(
       replaceSwapState({
@@ -275,7 +271,8 @@ export function useDefaultsFromURLSearch():
         field: parsed.independentField,
         inputCurrencyId: parsed[Field.INPUT].currencyId,
         outputCurrencyId: parsed[Field.OUTPUT].currencyId,
-
+        inputCurrencyChainId: ChainId.BASE,
+        outputCurrencyChainId: ChainId.ARBITRUM_ONE,
         recipient: null,
       }),
     )

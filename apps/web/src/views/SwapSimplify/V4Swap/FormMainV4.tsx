@@ -41,12 +41,6 @@ export function FormMain({ inputAmount, outputAmount, tradeLoading, isUserInsuff
     [Field.INPUT]: { currencyId: inputCurrencyId, chainId: inputCurrencyChainId },
     [Field.OUTPUT]: { currencyId: outputCurrencyId, chainId: outputCurrencyChainId },
   } = useSwapState()
-  console.log('form main', {
-    inputCurrencyId,
-    inputCurrencyChainId,
-    outputCurrencyId,
-    outputCurrencyChainId,
-  })
   const isWrapping = useIsWrapping()
   const inputCurrency = useCurrency(inputCurrencyId)
   const outputCurrency = useCurrency(outputCurrencyId)

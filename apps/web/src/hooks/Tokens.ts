@@ -302,7 +302,7 @@ const SHORT_SYMBOL = {
   [ChainId.ARBITRUM_ONE]: 'ARB',
 } as const
 
-export function useSwapChain(chainId: ChainId | undefined, fieldType: 'input' | 'output') {
+export function useSwapChain(chainId: ChainId | undefined, fieldType: 'input' | 'output' = 'input') {
   const chain = useMemo(() => {
     if (!chainId) return undefined
     return evmChains.find((c) => c.id === chainId)

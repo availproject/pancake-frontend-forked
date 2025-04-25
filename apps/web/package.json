@@ -32,6 +32,7 @@
     ]
   },
   "dependencies": {
+    "@arcana/ca-wagmi": "^0.0.6",
     "@binance/w3w-utils": "1.1.4",
     "@binance/w3w-wagmi-connector-v2": "^1.2.3",
     "@cyberlab/cyber-app-sdk": "v3.0.0-beta.5",
@@ -103,6 +104,7 @@
     "crypto-js": "^4.2.0",
     "d3": "^7.8.2",
     "dayjs": "^1.11.10",
+    "decimal.js": "10.4.3",
     "easymde": "2.16.1",
     "ethers": "^5.7.0",
     "fast-json-stable-stringify": "^2.1.0",

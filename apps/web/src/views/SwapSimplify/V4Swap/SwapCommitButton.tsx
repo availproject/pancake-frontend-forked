@@ -19,6 +19,7 @@ import { SettingsMode } from 'components/Menu/GlobalSettings/types'
 import { BIG_INT_ZERO } from 'config/constants/exchange'
 import { useCurrency } from 'hooks/Tokens'
 import { useIsTransactionUnsupported } from 'hooks/Trades'
+import { NoValidRouteError } from 'hooks/useBestAMMTrade'
 import useWrapCallback, { WrapType } from 'hooks/useWrapCallback'
 import { Field } from 'state/swap/actions'
 import { useSwapState } from 'state/swap/hooks'
@@ -30,7 +31,6 @@ import { warningSeverity } from 'utils/exchange'
 import { isClassicOrder, isXOrder } from 'views/Swap/utils'
 import { ConfirmSwapModalV2 } from 'views/Swap/V3Swap/containers/ConfirmSwapModalV2'
 import { useAccount, useChainId } from 'wagmi'
-import { NoValidRouteError } from 'hooks/useBestAMMTrade'
 import { useParsedAmounts, useSlippageAdjustedAmounts, useSwapInputError } from '../../Swap/V3Swap/hooks'
 import { useConfirmModalState } from '../../Swap/V3Swap/hooks/useConfirmModalState'
 import { useSwapConfig } from '../../Swap/V3Swap/hooks/useSwapConfig'
@@ -38,6 +38,7 @@ import { useSwapCurrency } from '../../Swap/V3Swap/hooks/useSwapCurrency'
 import { CommitButtonProps } from '../../Swap/V3Swap/types'
 import { computeTradePriceBreakdown } from '../../Swap/V3Swap/utils/exchange'
 import { useIsRecipientError } from '../hooks/useIsRecipientError'
+import ArcanaSwapButton from './ArcanaSwapButton'
 
 const SettingsModalWithCustomDismiss = withCustomOnDismiss(SettingsModalV2)
 
@@ -45,6 +46,7 @@ interface SwapCommitButtonPropsType {
   order?: PriceOrder
   tradeError?: Error | null
   tradeLoading?: boolean
+  withArcana?: boolean
 }
 
 const useSettingModal = (onDismiss) => {
@@ -118,7 +120,7 @@ const SwapCommitButtonComp: React.FC<SwapCommitButtonPropsType & CommitButtonPro
     <UnsupportedSwapButtonReplace>
       <ConnectButtonReplace>
         <WrapCommitButtonReplace>
-          <SwapCommitButtonInner {...props} />
+          {props?.withArcana ? <ArcanaSwapButton /> : <SwapCommitButtonInner {...props} />}
         </WrapCommitButtonReplace>
       </ConnectButtonReplace>
     </UnsupportedSwapButtonReplace>
@@ -139,7 +141,7 @@ const SwapCommitButtonInner = memo(function SwapCommitButtonInner({
   const chainId = useChainId()
   // form data
   const { independentField } = useSwapState()
-  const [inputCurrency, outputCurrency] = useSwapCurrency()
+  const [inputCurrency, outputCurrency, inputCurrencyChain, outputCurrencyChain] = useSwapCurrency()
   const { isExpertMode } = useSwapConfig()
   const { isRecipientEmpty, isRecipientError } = useIsRecipientError()
 
@@ -257,7 +259,6 @@ const SwapCommitButtonInner = memo(function SwapCommitButtonInner({
   const handleSwap = useCallback(() => {
     setTradeToConfirm(order)
     resetState()
-
     // if expert mode turn-on, will not show preview modal
     // start swap directly
     if (isExpertMode) {
