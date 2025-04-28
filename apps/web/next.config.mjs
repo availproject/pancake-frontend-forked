@@ -70,6 +70,8 @@ const config = {
     '@pancakeswap/widgets-internal',
     '@pancakeswap/ifos',
     '@pancakeswap/uikit',
+    '@pancakeswap/wagmi',
+    '@pancakeswap/canonical-bridge',
     // https://github.com/TanStack/query/issues/6560#issuecomment-1975771676
     '@tanstack/query-core',
   ],
