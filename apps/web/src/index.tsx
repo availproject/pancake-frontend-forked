@@ -21,6 +21,7 @@ export function Updaters() {
     </>
   )
 }
+// This is a dummy comment
 
 export function Blocklist() {
   const { address } = useAccount()
