@@ -9,15 +9,11 @@ import {
   FlexGap,
   InfoFilledIcon,
   InjectedModalProps,
-  LinkExternal,
-  Message,
-  ScanLink,
   Skeleton,
   Text,
   TooltipText,
   useTooltip,
 } from '@pancakeswap/uikit'
-import { ChainLogo } from 'components/Logo/ChainLogo'
 import { FetchStatus } from 'config/constants/types'
 import useActiveWeb3React from 'hooks/useActiveWeb3React'
 import useAuth from 'hooks/useAuth'
@@ -29,7 +25,6 @@ import InternalLink from 'components/Links'
 import { useDomainNameForAddress } from 'hooks/useDomain'
 import { useState } from 'react'
 import { isMobile } from 'react-device-detect'
-import { getBlockExploreLink, getBlockExploreName } from 'utils'
 import { Address } from 'viem'
 import { useBalance } from 'wagmi'
 
@@ -69,20 +64,18 @@ const WalletInfo: React.FC<WalletInfoProps> = ({ hasLowNativeBalance, onDismiss 
     tooltipVisible: buyCryptoTooltipVisible,
     targetRef: buyCryptoTargetRef,
   } = useTooltip(
-    <>
-      <Box maxWidth="140px">
-        <FlexGap gap="8px" flexDirection="column" justifyContent="space-between">
-          <Text as="p">
-            {t('%currency% Balance Low. You need %currency% for transaction fees.', {
-              currency: native?.symbol,
-            })}
-          </Text>
-          <InternalLink href="/buy-crypto" onClick={() => onDismiss?.()}>
-            <Button height="30px">{t('Buy %currency%', { currency: native?.symbol })}</Button>
-          </InternalLink>
-        </FlexGap>
-      </Box>
-    </>,
+    <Box maxWidth="140px">
+      <FlexGap gap="8px" flexDirection="column" justifyContent="space-between">
+        <Text as="p">
+          {t('%currency% Balance Low. You need %currency% for transaction fees.', {
+            currency: native?.symbol,
+          })}
+        </Text>
+        <InternalLink href="/buy-crypto" onClick={() => onDismiss?.()}>
+          <Button height="30px">{t('Buy %currency%', { currency: native?.symbol })}</Button>
+        </InternalLink>
+      </FlexGap>
+    </Box>,
     {
       isInPortal: false,
       placement: isMobile ? 'top' : 'bottom',
@@ -103,37 +96,8 @@ const WalletInfo: React.FC<WalletInfoProps> = ({ hasLowNativeBalance, onDismiss 
         <CopyAddress tooltipMessage={t('Copied')} account={account ?? undefined} />
         {domainName ? <Text color="textSubtle">{domainName}</Text> : null}
       </FlexGap>
-      {hasLowNativeBalance && (
-        <Message variant="warning" mb="24px">
-          <Box>
-            <Text fontWeight="bold">
-              {t('%currency% Balance Low', {
-                currency: native.symbol,
-              })}
-            </Text>
-            <InternalLink href="/buy-crypto" onClick={() => onDismiss?.()}>
-              <Text color="primary">
-                {t('You need %currency% for transaction fees.', {
-                  currency: native.symbol,
-                })}
-              </Text>
-            </InternalLink>
-          </Box>
-        </Message>
-      )}
       {!isBSC && chain && (
         <Box mb="12px">
-          <Flex justifyContent="space-between" alignItems="center" mb="8px">
-            <Flex bg={COLORS.ETH} borderRadius="16px" pl="4px" pr="8px" py="2px">
-              <ChainLogo chainId={chain.id} />
-              <Text color="white" ml="4px">
-                {chain.name}
-              </Text>
-            </Flex>
-            <LinkExternal href={getBlockExploreLink(account, 'address', chainId)}>
-              {getBlockExploreName(chainId)}
-            </LinkExternal>
-          </Flex>
           <Flex alignItems="center" justifyContent="space-between">
             <Text color="textSubtle">
               {native.symbol} {t('Balance')}
@@ -180,17 +144,6 @@ const WalletInfo: React.FC<WalletInfoProps> = ({ hasLowNativeBalance, onDismiss 
       )}
 
       <Box mb="24px">
-        <Flex justifyContent="space-between" alignItems="center" mb="8px">
-          <Flex bg={COLORS.BNB} borderRadius="16px" pl="4px" pr="8px" py="2px">
-            <ChainLogo chainId={ChainId.BSC} />
-            <Text color="white" ml="4px">
-              BNB Smart Chain
-            </Text>
-          </Flex>
-          <ScanLink useBscCoinFallback href={getBlockExploreLink(account, 'address', ChainId.BSC)}>
-            {getBlockExploreName(ChainId.BSC)}
-          </ScanLink>
-        </Flex>
         {chainId === 56 ? (
           <Flex alignItems="center" justifyContent="space-between">
             <Text color="textSubtle">BNB {t('Balance')}</Text>

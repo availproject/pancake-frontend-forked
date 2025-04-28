@@ -2,7 +2,7 @@ import { TradeType } from '@pancakeswap/sdk'
 import tryParseAmount from '@pancakeswap/utils/tryParseAmount'
 import { useUserSingleHopOnly } from '@pancakeswap/utils/user'
 
-import { useCurrency } from 'hooks/Tokens'
+import { useCurrency, useSwapChain } from 'hooks/Tokens'
 import { useBestAMMTrade, useBestTradeFromApi, useBestTradeFromApiShadow } from 'hooks/useBestAMMTrade'
 import { usePCSXEnabledOnChain } from 'hooks/usePCSX'
 import { useCallback, useDeferredValue, useMemo, useState } from 'react'
@@ -23,11 +23,13 @@ export function useSwapBestOrder({ maxHops }: Options = {}) {
   const {
     independentField,
     typedValue,
-    [Field.INPUT]: { currencyId: inputCurrencyId },
-    [Field.OUTPUT]: { currencyId: outputCurrencyId },
+    [Field.INPUT]: { currencyId: inputCurrencyId, chainId: inputCurrencyChainId },
+    [Field.OUTPUT]: { currencyId: outputCurrencyId, chainId: outputCurrencyChainId },
   } = useSwapState()
   const inputCurrency = useCurrency(inputCurrencyId)
   const outputCurrency = useCurrency(outputCurrencyId)
+  const inputCurrencyChain = useSwapChain(inputCurrencyChainId)
+  const outputCurrencyChain = useSwapChain(outputCurrencyChainId)
   const enabled = usePCSXEnabledOnChain(inputCurrency?.chainId)
   const isExactIn = independentField === Field.INPUT
   const independentCurrency = isExactIn ? inputCurrency : outputCurrency

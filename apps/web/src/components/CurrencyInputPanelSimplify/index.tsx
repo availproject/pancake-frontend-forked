@@ -1,5 +1,5 @@
 import { useTranslation } from '@pancakeswap/localization'
-import { Currency, CurrencyAmount, Pair, Token } from '@pancakeswap/sdk'
+import { ChainId, Currency, CurrencyAmount, Pair, Token } from '@pancakeswap/sdk'
 import {
   Box,
   Button,
@@ -14,7 +14,7 @@ import {
   useModal,
 } from '@pancakeswap/uikit'
 import { formatAmount } from '@pancakeswap/utils/formatFractions'
-import { CurrencyLogo, DoubleCurrencyLogo, SwapUIV2 } from '@pancakeswap/widgets-internal'
+import { ChainLogo, CurrencyLogo, DoubleCurrencyLogo, SwapUIV2 } from '@pancakeswap/widgets-internal'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { styled } from 'styled-components'
 
@@ -157,8 +157,9 @@ interface CurrencyInputPanelProps {
   maxAmount?: CurrencyAmount<Currency>
   lpPercent?: string
   label?: string
-  onCurrencySelect?: (currency: Currency) => void
+  onCurrencySelect?: (currency: Currency, chainId?: ChainId) => void
   currency?: Currency | null
+  chainId?: ChainId | undefined
   disableCurrencySelect?: boolean
   hideBalance?: boolean
   pair?: Pair | StablePair | null
@@ -182,6 +183,7 @@ interface CurrencyInputPanelProps {
   title?: React.ReactNode
   hideBalanceComp?: boolean
   isUserInsufficientBalance?: boolean
+  enableChainIdSelect?: boolean
 }
 const CurrencyInputPanelSimplify = memo(function CurrencyInputPanel({
   defaultValue,
@@ -191,8 +193,10 @@ const CurrencyInputPanelSimplify = memo(function CurrencyInputPanel({
   onMax,
   onCurrencySelect,
   currency,
+  chainId,
   disableCurrencySelect = false,
   hideBalance = false,
+  enableChainIdSelect = false,
   beforeButton,
   pair = null, // used for double token logo
   otherCurrency,
@@ -238,6 +242,7 @@ const CurrencyInputPanelSimplify = memo(function CurrencyInputPanel({
     <CurrencySearchModal
       onCurrencySelect={onCurrencySelect}
       selectedCurrency={currency}
+      selectedChainId={chainId}
       otherSelectedCurrency={otherCurrency}
       showCommonBases={showCommonBases}
       commonBasesType={commonBasesType}
@@ -245,6 +250,7 @@ const CurrencyInputPanelSimplify = memo(function CurrencyInputPanel({
       tokensToShow={tokensToShow}
       mode={mode}
       showCurrencyInHeader
+      enableChainIdSelect
     />,
   )
 
@@ -341,22 +347,30 @@ const CurrencyInputPanelSimplify = memo(function CurrencyInputPanel({
         ) : null
       }
       inputLeft={
-        <>
-          <Flex alignItems="center">
-            {beforeButton}
-            <CurrencySelectButton
-              className="open-currency-select-button"
-              data-dd-action-name="Select currency"
-              selected={!!currency}
-              onClick={onCurrencySelectClick}
-            >
-              <Flex alignItems="center" justifyContent="space-between">
-                {pair ? (
-                  <DoubleCurrencyLogo currency0={pair.token0} currency1={pair.token1} size={16} margin />
-                ) : currency ? (
-                  id === 'onramp-input' ? (
-                    <FiatLogo currency={currency} size={`${LOGO_SIZE.MAX}px`} style={{ marginRight: '8px' }} />
-                  ) : (
+        <Flex alignItems="center">
+          {beforeButton}
+          <CurrencySelectButton
+            className="open-currency-select-button"
+            data-dd-action-name="Select currency"
+            selected={!!currency}
+            onClick={onCurrencySelectClick}
+          >
+            <Flex alignItems="center" justifyContent="space-between">
+              {pair ? (
+                <DoubleCurrencyLogo currency0={pair.token0} currency1={pair.token1} size={16} margin />
+              ) : currency ? (
+                id === 'onramp-input' ? (
+                  <FiatLogo currency={currency} size={`${LOGO_SIZE.MAX}px`} style={{ marginRight: '8px' }} />
+                ) : (
+                  <>
+                    {chainId && (
+                      <ChainLogo
+                        chainId={chainId}
+                        width={20}
+                        height={20}
+                        style={{ position: 'absolute', left: '-5px', top: '2px' }}
+                      />
+                    )}
                     <CurrencyLogo
                       imageRef={tokenImageRef}
                       currency={currency}
@@ -365,29 +379,29 @@ const CurrencyInputPanelSimplify = memo(function CurrencyInputPanel({
                         marginRight: '8px',
                       }}
                     />
-                  )
-                ) : currencyLoading ? (
-                  <Skeleton width="40px" height="40px" variant="circle" />
-                ) : null}
-                {currencyLoading ? null : pair ? (
-                  <Text id="pair" bold fontSize="24px">
-                    {pair?.token0.symbol}:{pair?.token1.symbol}
-                  </Text>
-                ) : (
-                  <Flex alignItems="start" flexDirection="column">
-                    <Flex alignItems="center" justifyContent="space-between">
-                      <SymbolText id="pair" bold ref={symbolRef}>
-                        {(currency && currency.symbol && shortedSymbol) || t('Select a currency')}
-                      </SymbolText>
-                      {!currencyLoading && !disableCurrencySelect && <ChevronDownIcon />}
-                    </Flex>
-                    <RiskInputPanelDisplay token={token ?? undefined} />
+                  </>
+                )
+              ) : currencyLoading ? (
+                <Skeleton width="40px" height="40px" variant="circle" />
+              ) : null}
+              {currencyLoading ? null : pair ? (
+                <Text id="pair" bold fontSize="24px">
+                  {pair?.token0.symbol}:{pair?.token1.symbol}
+                </Text>
+              ) : (
+                <Flex alignItems="start" flexDirection="column">
+                  <Flex alignItems="center" justifyContent="space-between">
+                    <SymbolText id="pair" bold ref={symbolRef}>
+                      {(currency && currency.symbol && shortedSymbol) || t('Select a currency')}
+                    </SymbolText>
+                    {!currencyLoading && !disableCurrencySelect && <ChevronDownIcon />}
                   </Flex>
-                )}
-              </Flex>
-            </CurrencySelectButton>
-          </Flex>
-        </>
+                  <RiskInputPanelDisplay token={token ?? undefined} />
+                </Flex>
+              )}
+            </Flex>
+          </CurrencySelectButton>
+        </Flex>
       }
       bottom={
         inputLoading || (showUSDPrice && Number.isFinite(amountInDollar)) ? (

@@ -1,6 +1,6 @@
 import { usePreviousValue } from '@pancakeswap/hooks'
 import { useTranslation } from '@pancakeswap/localization'
-import { Currency, Token } from '@pancakeswap/sdk'
+import { ChainId, Currency, Token } from '@pancakeswap/sdk'
 import { TokenList, WrappedTokenInfo } from '@pancakeswap/token-lists'
 import { enableList, removeList, useFetchListCallback } from '@pancakeswap/token-lists/react'
 import {
@@ -62,32 +62,40 @@ const StyledModalBody = styled(ModalBody)`
 
 export interface CurrencySearchModalProps extends InjectedModalProps {
   selectedCurrency?: Currency | null
-  onCurrencySelect?: (currency: Currency) => void
+  selectedChainId?: ChainId | undefined
+  onCurrencySelect?: (currency: Currency, chainId?: ChainId) => void
   otherSelectedCurrency?: Currency | null
   showCommonBases?: boolean
   commonBasesType?: string
   showSearchInput?: boolean
   tokensToShow?: Token[]
   showCurrencyInHeader?: boolean
+  enableChainIdSelect?: boolean
 }
 
 export default function CurrencySearchModal({
   onDismiss = () => null,
   onCurrencySelect,
   selectedCurrency,
+  selectedChainId,
   otherSelectedCurrency,
   showCommonBases = true,
   commonBasesType,
   showSearchInput,
   tokensToShow,
   showCurrencyInHeader = false,
-}: CurrencySearchModalProps) {
+  enableChainIdSelect = false,
+}: Readonly<CurrencySearchModalProps>) {
   const [modalView, setModalView] = useState<CurrencyModalView>(CurrencyModalView.search)
 
   const handleCurrencySelect = useCallback(
-    (currency: Currency) => {
+    (currency: Currency, chainId?: ChainId) => {
       onDismiss?.()
-      onCurrencySelect?.(currency)
+      if (chainId) {
+        onCurrencySelect?.(currency, chainId)
+      } else {
+        onCurrencySelect?.(currency)
+      }
     },
     [onDismiss, onCurrencySelect],
   )
@@ -221,14 +229,10 @@ export default function CurrencySearchModal({
           <CurrencySearch
             onCurrencySelect={handleCurrencySelect}
             selectedCurrency={selectedCurrency}
-            otherSelectedCurrency={otherSelectedCurrency}
+            selectedChainId={selectedChainId}
             showCommonBases={showCommonBases}
             commonBasesType={commonBasesType}
-            showSearchInput={showSearchInput}
-            showImportView={() => setModalView(CurrencyModalView.importToken)}
-            setImportToken={setImportToken}
-            height={height}
-            tokensToShow={tokensToShow}
+            enableChainIdSelect
           />
         ) : modalView === CurrencyModalView.importToken && importToken ? (
           <ImportToken tokens={[importToken]} handleCurrencySelect={handleCurrencySelect} />

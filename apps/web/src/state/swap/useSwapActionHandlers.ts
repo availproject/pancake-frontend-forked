@@ -1,11 +1,11 @@
-import { useCallback } from 'react'
-import { Currency } from '@pancakeswap/sdk'
+import { ChainId, Currency } from '@pancakeswap/sdk'
 import { useAtom } from 'jotai'
+import { useCallback } from 'react'
 import { swapReducerAtom } from 'state/swap/reducer'
-import { Field, selectCurrency, switchCurrencies, typeInput, setRecipient } from './actions'
+import { Field, selectCurrency, setRecipient, switchCurrencies, typeInput } from './actions'
 
 export function useSwapActionHandlers(): {
-  onCurrencySelection: (field: Field, currency?: Currency) => void
+  onCurrencySelection: (field: Field, currency?: Currency, chainId?: ChainId) => void
   onSwitchTokens: () => void
   onUserInput: (field: Field, typedValue: string) => void
   onChangeRecipient: (recipient: string | null) => void
@@ -17,11 +17,13 @@ export function useSwapActionHandlers(): {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const onCurrencySelection = useCallback((field: Field, currency?: Currency) => {
+  const onCurrencySelection = useCallback((field: Field, currency?: Currency, chainId?: ChainId) => {
+    console.log('onCurrencySelection', { field, currency, chainId })
     dispatch(
       selectCurrency({
         field,
         currencyId: currency?.isToken ? currency.address : currency?.isNative ? currency.symbol : '',
+        chainId: chainId ?? ChainId.BASE,
       }),
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -7,6 +7,7 @@ export type CommitButtonProps = {
   tradeLoaded: boolean
   beforeCommit?: () => void
   afterCommit?: () => void
+  withArcana?: boolean
 }
 
 export const CommitButton: React.FC<CommitButtonProps> = ({
@@ -15,6 +16,7 @@ export const CommitButton: React.FC<CommitButtonProps> = ({
   tradeLoaded,
   beforeCommit,
   afterCommit,
+  withArcana = false,
 }) => {
   return (
     <SwapCommitButton
@@ -23,6 +25,7 @@ export const CommitButton: React.FC<CommitButtonProps> = ({
       tradeLoading={!tradeLoaded}
       beforeCommit={beforeCommit}
       afterCommit={afterCommit}
+      withArcana={withArcana}
     />
   )
 }

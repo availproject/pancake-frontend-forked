@@ -115,7 +115,6 @@ export function V4SwapForm() {
     [Field.INPUT]: { currencyId: inputCurrencyId },
     [Field.OUTPUT]: { currencyId: outputCurrencyId },
   } = useSwapState()
-
   const inputCurrency = useCurrency(inputCurrencyId)
   const outputCurrency = useCurrency(outputCurrencyId)
 
@@ -130,7 +129,7 @@ export function V4SwapForm() {
   return (
     <SwapUIV2.SwapFormWrapper>
       <SwapUIV2.SwapTabAndInputPanelWrapper>
-        <SwapSelection swapType={SwapType.MARKET} withToolkit />
+        <SwapSelection swapType={SwapType.MARKET} />
         <FormMain
           tradeLoading={!tradeLoaded}
           inputAmount={bestOrder?.trade?.inputAmount}
@@ -154,7 +153,13 @@ export function V4SwapForm() {
       )}
       <ButtonAndDetailsPanel
         swapCommitButton={
-          <CommitButton order={bestOrder} tradeLoaded={tradeLoaded} tradeError={tradeError} {...commitHooks} />
+          <CommitButton
+            order={bestOrder}
+            tradeLoaded={tradeLoaded}
+            tradeError={tradeError}
+            {...commitHooks}
+            withArcana
+          />
         }
         mevSlot={<MevSwapDetail />}
         pricingAndSlippage={

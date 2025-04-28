@@ -1,12 +1,13 @@
 import { ChainId } from '@pancakeswap/chains'
 import { useTranslation } from '@pancakeswap/localization'
-import { Currency, Token } from '@pancakeswap/sdk'
-import { AutoColumn, QuestionHelper, Text } from '@pancakeswap/uikit'
-import { CurrencyLogo } from '@pancakeswap/widgets-internal'
+import { Currency } from '@pancakeswap/sdk'
+import { AutoColumn, Button, QuestionHelper, Text } from '@pancakeswap/uikit'
+import { ChainLogo, CurrencyLogo } from '@pancakeswap/widgets-internal'
 import useNativeCurrency from 'hooks/useNativeCurrency'
 import { styled } from 'styled-components'
 
 import { SUGGESTED_BASES } from 'config/constants/exchange'
+import { useCallback, useState } from 'react'
 import { AutoRow } from '../Layout/Row'
 import { CommonBasesType } from './types'
 
@@ -16,8 +17,13 @@ const ButtonWrapper = styled.div`
   margin-right: 10px;
 `
 
-const BaseWrapper = styled.div<{ disable?: boolean }>`
-  border: 1px solid ${({ theme, disable }) => (disable ? 'transparent' : theme.colors.dropdown)};
+const BaseWrapper = styled.div<{ disable?: boolean; isSelected?: boolean }>`
+  border: 1px solid
+    ${({ theme, disable, isSelected }) => {
+      if (disable) return 'transparent'
+      if (isSelected) return theme.colors.primary // Highlight border for selected state
+      return theme.colors.dropdown
+    }};
   border-radius: ${({ theme }) => theme.radii['20px']};
   padding-left: 2px;
   display: flex;
@@ -26,9 +32,9 @@ const BaseWrapper = styled.div<{ disable?: boolean }>`
     cursor: ${({ disable }) => !disable && 'pointer'};
     background-color: ${({ theme, disable }) => !disable && theme.colors.background};
   }
-  background-color: ${({ theme }) => theme.colors.tertiary};
+  background-color: ${({ theme, isSelected }) => (isSelected ? `${theme.colors.primary}1a` : theme.colors.tertiary)};
   opacity: ${({ disable }) => disable && '0.4'};
-  transition: background-color 0.15s;
+  transition: background-color 0.15s, border-color 0.15s;
 `
 
 const RowWrapper = styled.div`
@@ -44,23 +50,54 @@ const RowWrapper = styled.div`
   }
 `
 
+const ConfirmButtonWrapper = styled.div`
+  margin-top: 16px;
+  width: 100%;
+  text-align: center;
+`
+
+export const SUPPORTED_CHAIN_IDS = [ChainId.BASE, ChainId.ARBITRUM_ONE]
+const SUPPORTED_TOKENS = [...SUGGESTED_BASES[ChainId.LINEA]]
+
 export default function CommonBases({
   chainId,
   onSelect,
   selectedCurrency,
+  selectedChainId,
   commonBasesType,
-}: {
+  enableChainIdSelect = false,
+}: Readonly<{
   chainId?: ChainId
+  selectedChainId?: ChainId | undefined
   commonBasesType
   selectedCurrency?: Currency | null
-  onSelect: (currency: Currency) => void
-}) {
+  onSelect: (currency: Currency, chainId?: ChainId) => void
+  enableChainIdSelect?: boolean
+}>) {
   const native = useNativeCurrency()
+  const [selectedToken, setSelectedToken] = useState(selectedCurrency ?? native?.wrapped)
+  const [selectedNewChainId, setSelectedNewChainId] = useState<ChainId | undefined>(selectedChainId)
+
   const { t } = useTranslation()
   const pinTokenDescText = commonBasesType === CommonBasesType.SWAP_LIMITORDER ? t('Select token') : t('Common bases')
 
+  const handleSelectToken = useCallback((token: Currency) => {
+    console.log('handleSelectToken', token)
+    setSelectedToken(token)
+  }, [])
+
+  const handleSelectChainId = useCallback((newChainId: ChainId) => {
+    setSelectedNewChainId(newChainId)
+  }, [])
+
+  const handleConfirm = useCallback(() => {
+    if (selectedToken && selectedNewChainId) {
+      onSelect(selectedToken, selectedNewChainId)
+    }
+  }, [selectedToken, selectedNewChainId, onSelect])
+
   return (
-    <AutoColumn gap="sm">
+    <AutoColumn gap="lg">
       <AutoRow>
         <Text color="textSubtle" fontSize="14px">
           {pinTokenDescText}
@@ -70,24 +107,11 @@ export default function CommonBases({
         )}
       </AutoRow>
       <RowWrapper>
-        <ButtonWrapper>
-          <BaseWrapper
-            onClick={() => {
-              if (!selectedCurrency || !selectedCurrency.isNative) {
-                onSelect(native)
-              }
-            }}
-            disable={selectedCurrency?.isNative}
-          >
-            <CurrencyLogo currency={native} />
-            <Text p="2px 6px">{native?.symbol}</Text>
-          </BaseWrapper>
-        </ButtonWrapper>
-        {(chainId ? SUGGESTED_BASES[chainId] || [] : []).map((token: Token) => {
-          const selected = selectedCurrency?.equals(token)
+        {SUPPORTED_TOKENS.map((token) => {
+          const selected = selectedToken?.equals(token)
           return (
-            <ButtonWrapper key={`buttonBase#${token.address}`}>
-              <BaseWrapper onClick={() => !selected && onSelect(token)} disable={selected}>
+            <ButtonWrapper key={`buttonBase#${token.name}`}>
+              <BaseWrapper onClick={() => !selected && handleSelectToken(token)} isSelected={selected}>
                 <CurrencyLogo currency={token} style={{ borderRadius: '50%' }} />
                 <Text p="2px 6px">{token.symbol}</Text>
               </BaseWrapper>
@@ -95,6 +119,36 @@ export default function CommonBases({
           )
         })}
       </RowWrapper>
+      {enableChainIdSelect && (
+        <>
+          <AutoRow>
+            <Text color="textSubtle" fontSize="14px">
+              {t('Select chain')}
+            </Text>
+          </AutoRow>
+          <RowWrapper>
+            {SUPPORTED_CHAIN_IDS.map((supportedChainId) => {
+              const isSelected = selectedNewChainId === supportedChainId
+              return (
+                <ButtonWrapper key={`buttonChainId#${supportedChainId}`}>
+                  <BaseWrapper
+                    onClick={() => !isSelected && handleSelectChainId(supportedChainId)}
+                    isSelected={isSelected}
+                  >
+                    <ChainLogo chainId={supportedChainId} width={20} height={20} />
+                    <Text p="2px 6px">{supportedChainId === ChainId.BASE ? 'Base' : 'Arbitrum'}</Text>
+                  </BaseWrapper>
+                </ButtonWrapper>
+              )
+            })}
+          </RowWrapper>
+        </>
+      )}
+      <ConfirmButtonWrapper>
+        <Button disabled={!selectedToken} onClick={handleConfirm} width="100%">
+          {t('Confirm Selection')}
+        </Button>
+      </ConfirmButtonWrapper>
     </AutoColumn>
   )
 }

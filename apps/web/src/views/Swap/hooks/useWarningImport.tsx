@@ -7,7 +7,7 @@ import { useRouter } from 'next/router'
 import shouldShowSwapWarning from 'utils/shouldShowSwapWarning'
 
 import ImportTokenWarningModal from 'components/ImportTokenWarningModal'
-import { useAllTokens, useCurrency } from 'hooks/Tokens'
+import { useAllTokens, useCurrency, useSwapChain } from 'hooks/Tokens'
 import useActiveWeb3React from 'hooks/useActiveWeb3React'
 import { Field } from 'state/swap/actions'
 import { useSwapState } from 'state/swap/hooks'
@@ -19,10 +19,11 @@ export default function useWarningImport() {
   const router = useRouter()
   const { chainId, isWrongNetwork } = useActiveWeb3React()
   const {
-    [Field.INPUT]: { currencyId: inputCurrencyId },
-    [Field.OUTPUT]: { currencyId: outputCurrencyId },
+    [Field.INPUT]: { currencyId: inputCurrencyId, chainId: inputCurrencyChainId },
+    [Field.OUTPUT]: { currencyId: outputCurrencyId, chainId: outputCurrencyChainId },
   } = useSwapState()
-
+  const { chain: inputChain } = useSwapChain(inputCurrencyChainId, 'input')
+  const { chain: outputChain } = useSwapChain(outputCurrencyChainId, 'output')
   // swap warning state
   const [swapWarningCurrency, setSwapWarningCurrency] = useState<any>(null)
 

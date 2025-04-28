@@ -16,7 +16,6 @@ import { styled } from 'styled-components'
 import { parseEther } from 'viem'
 import { useAccount, useBalance } from 'wagmi'
 import WalletInfo from './WalletInfo'
-import WalletTransactions from './WalletTransactions'
 import WalletWrongNetwork from './WalletWrongNetwork'
 
 export enum WalletView {
@@ -53,7 +52,7 @@ const TabsComponent: React.FC<React.PropsWithChildren<TabsComponentProps>> = ({ 
     <Tabs>
       <ButtonMenu scale="sm" variant="subtle" onItemClick={handleClick} activeIndex={view} fullWidth>
         <ButtonMenuItem>{t('Wallet')}</ButtonMenuItem>
-        <ButtonMenuItem>{t('Transactions')}</ButtonMenuItem>
+        <></>
       </ButtonMenu>
     </Tabs>
   )
@@ -88,7 +87,6 @@ const WalletModal: React.FC<React.PropsWithChildren<WalletModalProps>> = ({
         {view === WalletView.WALLET_INFO && (
           <WalletInfo hasLowNativeBalance={hasLowNativeBalance} switchView={handleClick} onDismiss={onDismiss} />
         )}
-        {view === WalletView.TRANSACTIONS && !!onDismiss && <WalletTransactions onDismiss={onDismiss} />}
         {view === WalletView.WRONG_NETWORK && !!onDismiss && <WalletWrongNetwork onDismiss={onDismiss} />}
       </ModalBody>
     </ModalWrapper>

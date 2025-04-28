@@ -30,7 +30,7 @@ queryChainIdAtom.onMount = (set) => {
 export function useLocalNetworkChain() {
   const [queryChainId, setQueryChainId] = useAtom(queryChainIdAtom)
   const { query } = useRouter()
-  const chainId = +(getChainId(query.chain as string) || queryChainId)
+  const chainId = +(getChainId(query.chain as string) ?? queryChainId)
 
   useEffect(() => {
     if (chainId) {
@@ -50,7 +50,7 @@ export const useActiveChainId = () => {
   const queryChainId = useAtomValue(queryChainIdAtom)
 
   const { chainId: wagmiChainId } = useAccount()
-  const chainId = localChainId ?? wagmiChainId ?? (queryChainId >= 0 ? ChainId.BSC : undefined)
+  const chainId = localChainId ?? wagmiChainId ?? (queryChainId >= 0 ? ChainId.ETHEREUM : undefined)
 
   const isNotMatched = useDeferredValue(wagmiChainId && localChainId && wagmiChainId !== localChainId)
   const isWrongNetwork = useMemo(
@@ -59,7 +59,7 @@ export const useActiveChainId = () => {
   )
 
   return {
-    chainId: chainId && isChainSupported(chainId) ? chainId : ChainId.BSC,
+    chainId: chainId && isChainSupported(chainId) ? chainId : ChainId.ETHEREUM,
     isWrongNetwork,
     isNotMatched,
   }

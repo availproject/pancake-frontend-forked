@@ -1,5 +1,6 @@
-import { createAction } from '@reduxjs/toolkit'
+import { ChainId } from '@pancakeswap/chains'
 import { PairDataTimeWindowEnum } from '@pancakeswap/uikit'
+import { createAction } from '@reduxjs/toolkit'
 import { DerivedPairDataNormalized, PairDataNormalized } from './types'
 
 export enum Field {
@@ -7,7 +8,9 @@ export enum Field {
   OUTPUT = 'OUTPUT',
 }
 
-export const selectCurrency = createAction<{ field: Field; currencyId: string }>('swap/selectCurrency')
+export const selectCurrency = createAction<{ field: Field; currencyId: string; chainId: ChainId }>(
+  'swap/selectCurrency',
+)
 export const switchCurrencies = createAction<void>('swap/switchCurrencies')
 export const typeInput = createAction<{ field: Field; typedValue: string }>('swap/typeInput')
 export const replaceSwapState = createAction<{
@@ -15,6 +18,8 @@ export const replaceSwapState = createAction<{
   typedValue: string
   inputCurrencyId?: string
   outputCurrencyId?: string
+  inputCurrencyChainId?: ChainId
+  outputCurrencyChainId?: ChainId
   recipient: string | null
 }>('swap/replaceSwapState')
 export const setRecipient = createAction<{ recipient: string | null }>('swap/setRecipient')

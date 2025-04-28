@@ -37,7 +37,7 @@ const CHART_SUPPORT_CHAIN_IDS: ChainId[] = [
   // ChainId.OPBNB,
   // ChainId.ZKSYNC,
 ]
-const STABLE_SUPPORT_CHAIN_IDS = [ChainId.BSC_TESTNET, ChainId.BSC]
+const STABLE_SUPPORT_CHAIN_IDS = [ChainId.BASE, ChainId.ARBITRUM_ONE]
 // const HOT_TOKEN_SUPPORT_CHAIN_IDS = [ChainId.BSC, ChainId.ETHEREUM]
 
 export const SwapFeaturesProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
