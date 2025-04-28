@@ -1,6 +1,6 @@
 import { useTranslation } from '@pancakeswap/localization'
 import { ChainId, Currency, CurrencyAmount, Price, Trade, TradeType } from '@pancakeswap/sdk'
-import { USDT } from '@pancakeswap/tokens'
+import { USDT, lineaTokens } from '@pancakeswap/tokens'
 import { PairDataTimeWindowEnum } from '@pancakeswap/uikit'
 import tryParseAmount from '@pancakeswap/utils/tryParseAmount'
 import { useQuery } from '@tanstack/react-query'
@@ -11,7 +11,6 @@ import { useActiveChainId } from 'hooks/useActiveChainId'
 import { useAutoSlippageWithFallback } from 'hooks/useAutoSlippageWithFallback'
 import { useBestAMMTrade } from 'hooks/useBestAMMTrade'
 import { useGetENSAddressByName } from 'hooks/useGetENSAddressByName'
-import useNativeCurrency from 'hooks/useNativeCurrency'
 import { useAtom, useAtomValue } from 'jotai'
 import { useRouter } from 'next/router'
 import { ParsedUrlQuery } from 'querystring'
@@ -255,15 +254,14 @@ export function useDefaultsFromURLSearch():
   | undefined {
   const { chainId } = useActiveChainId()
   const [, dispatch] = useAtom(swapReducerAtom)
-  const native = useNativeCurrency()
   const { query, isReady } = useRouter()
   const [result, setResult] = useState<
     { inputCurrencyId: string | undefined; outputCurrencyId: string | undefined } | undefined
   >()
 
   useEffect(() => {
-    if (!chainId || !native || !isReady) return
-    const parsed = queryParametersToSwapState(query, native.symbol, USDT[chainId]?.address)
+    if (!chainId || !isReady) return
+    const parsed = queryParametersToSwapState(query, lineaTokens.weth.address, USDT[chainId]?.address)
 
     dispatch(
       replaceSwapState({
@@ -277,7 +275,7 @@ export function useDefaultsFromURLSearch():
       }),
     )
     setResult({ inputCurrencyId: parsed[Field.INPUT].currencyId, outputCurrencyId: parsed[Field.OUTPUT].currencyId })
-  }, [dispatch, chainId, query, native, isReady])
+  }, [dispatch, chainId, query, isReady])
 
   return result
 }

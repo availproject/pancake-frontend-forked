@@ -1,15 +1,13 @@
 import { ChainId } from '@pancakeswap/chains'
 import { useTranslation } from '@pancakeswap/localization'
-import { Currency, WETH9 } from '@pancakeswap/sdk'
+import { Currency } from '@pancakeswap/sdk'
 import { AutoColumn, Button, QuestionHelper, Text } from '@pancakeswap/uikit'
 import { ChainLogo, CurrencyLogo } from '@pancakeswap/widgets-internal'
 import useNativeCurrency from 'hooks/useNativeCurrency'
 import { styled } from 'styled-components'
 
-import { USDT } from '@pancakeswap/tokens'
 import { SUGGESTED_BASES } from 'config/constants/exchange'
-import { useSwapChain } from 'hooks/Tokens'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { AutoRow } from '../Layout/Row'
 import { CommonBasesType } from './types'
 
@@ -59,7 +57,7 @@ const ConfirmButtonWrapper = styled.div`
 `
 
 export const SUPPORTED_CHAIN_IDS = [ChainId.BASE, ChainId.ARBITRUM_ONE]
-const SUPPORTED_TOKENS = [...SUGGESTED_BASES[ChainId.ETHEREUM]]
+const SUPPORTED_TOKENS = [...SUGGESTED_BASES[ChainId.LINEA]]
 
 export default function CommonBases({
   chainId,
@@ -79,14 +77,7 @@ export default function CommonBases({
   const native = useNativeCurrency()
   const [selectedToken, setSelectedToken] = useState(selectedCurrency ?? native?.wrapped)
   const [selectedNewChainId, setSelectedNewChainId] = useState<ChainId | undefined>(selectedChainId)
-  const selectedChain = useSwapChain(selectedChainId, 'input')
 
-  const supportedTokens = useMemo(() => {
-    if (native) {
-      return [...SUPPORTED_TOKENS, native?.wrapped]
-    }
-    return SUPPORTED_TOKENS
-  }, [native])
   const { t } = useTranslation()
   const pinTokenDescText = commonBasesType === CommonBasesType.SWAP_LIMITORDER ? t('Select token') : t('Common bases')
 
@@ -101,12 +92,6 @@ export default function CommonBases({
 
   const handleConfirm = useCallback(() => {
     if (selectedToken && selectedNewChainId) {
-      let parsedToken: Currency
-      if (selectedToken?.symbol === 'USDT') {
-        parsedToken = USDT[selectedNewChainId]
-      } else {
-        parsedToken = WETH9[selectedNewChainId]
-      }
       onSelect(selectedToken, selectedNewChainId)
     }
   }, [selectedToken, selectedNewChainId, onSelect])
@@ -122,7 +107,7 @@ export default function CommonBases({
         )}
       </AutoRow>
       <RowWrapper>
-        {supportedTokens.map((token) => {
+        {SUPPORTED_TOKENS.map((token) => {
           const selected = selectedToken?.equals(token)
           return (
             <ButtonWrapper key={`buttonBase#${token.name}`}>

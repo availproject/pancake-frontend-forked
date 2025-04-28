@@ -1,4 +1,4 @@
-import { useCAFn, useUnifiedBalance } from '@arcana/ca-wagmi'
+import { useBalances, useCAFn, useUnifiedBalance } from '@arcana/ca-wagmi'
 import { ALLOWED_TOKENS } from '@arcana/ca-wagmi/dist/types/utils/constants'
 import { Box, Loading, useToast } from '@pancakeswap/uikit'
 import { CommitButton } from 'components/CommitButton'
@@ -15,6 +15,7 @@ const ArcanaSwapButton: React.FC = () => {
   const { address } = useAccount()
   const { chainId: sourceChainId } = useActiveChainId()
   const { loading: balanceLoading, getAssetBalance } = useUnifiedBalance()
+  const { data: allBalances } = useBalances()
   const { toastSuccess, toastError } = useToast()
   const { bridge } = useCAFn()
   // Get swap state
@@ -46,7 +47,7 @@ const ArcanaSwapButton: React.FC = () => {
     return balance ? new Decimal(balance).gte(new Decimal(inputAmount.toExact())) : false
   }, [balanceLoading, getAssetBalance, inputCurrency, inputAmount])
 
-  const bridgeToInputChain = async () => {
+  const startSwap = async () => {
     if (!address || !inputAmount || !inputCurrency || !outputCurrency || !inputChain || !outputChain) return
     setIsLoading(true)
     try {
@@ -73,12 +74,13 @@ const ArcanaSwapButton: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Bridge to input chain failed:', error)
-      toastError('Bridge Failed', error?.message || 'Please try again')
+      toastError('Bridge Failed', error?.message ?? 'Please try again')
       setIsLoading(false)
     }
   }
 
   const buttonText = useMemo(() => {
+    console.log('buttonText', balanceLoading)
     if (balanceLoading) return 'Loading Balance...'
     if (!hasEnoughBalance) return 'Insufficient Balance'
     if (isLoading) return <Loading />
@@ -118,7 +120,7 @@ const ArcanaSwapButton: React.FC = () => {
   )
 
   useEffect(() => {
-    const assetBalance = getAssetBalance('ETH')
+    const assetBalance = getAssetBalance('USDT')
     console.log('info', {
       inputChain,
       outputChain,
@@ -128,6 +130,7 @@ const ArcanaSwapButton: React.FC = () => {
       hasEnoughBalance,
       balanceLoading,
       assetBalance,
+      allBalances,
       currencyBalances,
       currencies,
     })
@@ -141,7 +144,7 @@ const ArcanaSwapButton: React.FC = () => {
         data-dd-action-name="Swap commit button"
         variant="primary"
         disabled={isDisabled}
-        onClick={bridgeToInputChain}
+        onClick={startSwap}
       >
         {buttonText}
       </CommitButton>

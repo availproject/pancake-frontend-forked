@@ -73,7 +73,7 @@ const NetworkSelect = ({ switchNetwork, chainId, isWrongNetwork, onDismiss }: Ne
       <Box maxHeight="70vh" overflow="auto" padding="16px 0">
         {evmChains
           .filter((chain) => {
-            // if (chain.id !== 1) return false
+            if (chain.id !== ChainId.LINEA) return false
             if (chain.id === chainId) return true
             // if ('testnet' in chain && chain.testnet && chain.id !== ChainId.MONAD_TESTNET) {
             //   return showTestnet
