@@ -1,4 +1,4 @@
-import { useCAFn, useSendTransaction, useUnifiedBalance, useWriteContract } from '@arcana/ca-wagmi'
+import { useCAFn, useUnifiedBalance } from '@arcana/ca-wagmi'
 import { ALLOWED_TOKENS } from '@arcana/ca-wagmi/dist/types/utils/constants'
 import { Box, Loading, useToast } from '@pancakeswap/uikit'
 import { CommitButton } from 'components/CommitButton'
@@ -14,8 +14,6 @@ const ArcanaSwapButton: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false)
   const { address } = useAccount()
   const { chainId: sourceChainId } = useActiveChainId()
-  const { sendTransaction } = useSendTransaction()
-  const { writeContract } = useWriteContract()
   const { loading: balanceLoading, getAssetBalance } = useUnifiedBalance()
   const { toastSuccess, toastError } = useToast()
   const { bridge } = useCAFn()
@@ -36,19 +34,12 @@ const ArcanaSwapButton: React.FC = () => {
     currencyBalances,
     currencies,
     inputError,
-  } = useDerivedSwapInfo(
-    independentField,
-    typedValue,
-    inputCurrency ?? undefined,
-    outputCurrency ?? undefined,
-    '', // recipient
-  )
+  } = useDerivedSwapInfo(independentField, typedValue, inputCurrency ?? undefined, outputCurrency ?? undefined, '')
 
   const { chain: inputChain } = useSwapChain(inputCurrencyChainId)
   const { chain: outputChain } = useSwapChain(outputCurrencyChainId, 'output')
   const { chain: sourceChain } = useSwapChain(sourceChainId)
 
-  // Check if user has enough balance
   const hasEnoughBalance = useMemo(() => {
     if (balanceLoading || !inputCurrency || !inputAmount) return false
     const balance = getAssetBalance(inputCurrency.symbol)?.balance
@@ -59,12 +50,14 @@ const ArcanaSwapButton: React.FC = () => {
     if (!address || !inputAmount || !inputCurrency || !outputCurrency || !inputChain || !outputChain) return
     setIsLoading(true)
     try {
+      // Bridge from source chain to input chain
       const souceToInputChainTx = await bridge({
         token: inputCurrency.symbol.toLowerCase() as ALLOWED_TOKENS,
         amount: inputAmount.toExact(),
         chain: inputChain.id,
       })
 
+      // Bridge from input chain to output chain
       if (souceToInputChainTx) {
         const inputToOutputChainTx = await bridge({
           token: inputCurrency.symbol.toLowerCase() as ALLOWED_TOKENS,
@@ -85,21 +78,19 @@ const ArcanaSwapButton: React.FC = () => {
     }
   }
 
-  // Update button text to include chain information
   const buttonText = useMemo(() => {
     if (balanceLoading) return 'Loading Balance...'
     if (!hasEnoughBalance) return 'Insufficient Balance'
     if (isLoading) return <Loading />
     if (inputError) return inputError
     if (inputChain?.id !== outputChain?.id) {
-      return `Swap ${inputCurrency?.symbol || ''} (${inputChain?.name || ''}) for ${outputCurrency?.symbol || ''} (${
-        outputChain?.name || ''
+      return `Swap ${inputCurrency?.symbol ?? ''} (${inputChain?.name ?? ''}) for ${outputCurrency?.symbol ?? ''} (${
+        outputChain?.name ?? ''
       })`
     }
-    return `Swap ${inputCurrency?.symbol || ''} for ${outputCurrency?.symbol || ''}`
+    return `Swap ${inputCurrency?.symbol ?? ''} for ${outputCurrency?.symbol ?? ''}`
   }, [balanceLoading, hasEnoughBalance, isLoading, inputError, inputCurrency, outputCurrency, inputChain, outputChain])
 
-  // Update disabled state to consider chain information
   const isDisabled = useMemo(
     () =>
       Boolean(
