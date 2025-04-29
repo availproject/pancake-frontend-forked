@@ -1,5 +1,5 @@
-import { TradeType } from '@pancakeswap/sdk'
 import { ChainId } from '@pancakeswap/chains'
+import { TradeType } from '@pancakeswap/sdk'
 import { FeeAmount } from '@pancakeswap/v3-sdk'
 import { Address } from 'viem'
 import { z } from 'zod'
@@ -109,7 +109,7 @@ export const zRouterGetParams = z
     tradeType: true,
     amount: true,
     currency: true,
-    candidatePools: true,
+    // candidatePools: true,
   })
 
 export const zRouterPostParams = z

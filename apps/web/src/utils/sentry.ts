@@ -1,4 +1,3 @@
-import { captureException } from '@sentry/nextjs'
 import { UserRejectedRequestError } from 'viem'
 
 const assignError = (maybeError: any) => {
@@ -52,11 +51,6 @@ const ENABLED_LOG = false
 
 export const logError = (error: Error | unknown) => {
   if (ENABLED_LOG) {
-    if (error instanceof Error) {
-      captureException(error)
-    } else {
-      captureException(assignError(error))
-    }
+    console.error(error)
   }
-  console.error(error)
 }

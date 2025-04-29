@@ -53,13 +53,7 @@ export const VeCakeFourYearCard = () => {
 
   return (
     <CardWrapper>
-      <ImageWrapper
-        width={174}
-        height={196}
-        placeholder="blur"
-        alt="boosterCardImage"
-        src="/images/pool/pool-vecake-card-icon.png"
-      />
+      <ImageWrapper width={174} height={196} alt="boosterCardImage" src="/images/pool/pool-vecake-card-icon.png" />
       <Card p="0px" style={{ zIndex: 1 }}>
         <StyledCardBody style={{ padding: '8px 24px 2px 24px' }}>
           <Text fontSize={14} bold color="secondary">

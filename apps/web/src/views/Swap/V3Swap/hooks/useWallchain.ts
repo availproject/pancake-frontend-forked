@@ -2,7 +2,6 @@ import { ChainId } from '@pancakeswap/chains'
 import { Currency, Token, TradeType } from '@pancakeswap/sdk'
 import { SmartRouterTrade } from '@pancakeswap/smart-router'
 import { FeeOptions } from '@pancakeswap/v3-sdk'
-import { captureException } from '@sentry/nextjs'
 import { useQuery } from '@tanstack/react-query'
 import type WallchainSDK from '@wallchain/sdk'
 import type { TMEVFoundResponse } from '@wallchain/sdk'
@@ -171,7 +170,6 @@ export function useWallchainApi(
           setStatus('not-found')
           setApprovalAddress(undefined)
           setMasterInput(undefined)
-          captureException(e)
           setLastUpdate(Date.now())
         })
     } else {

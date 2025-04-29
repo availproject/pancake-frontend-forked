@@ -207,6 +207,10 @@ const config = {
         maxRetries: 5,
       }),
     )
+
+    // Define worker dependencies here
+    const workerDeps = []
+
     if (!isServer && webpackConfig.optimization.splitChunks) {
       // webpack doesn't understand worker deps on quote worker, so we need to manually add them
       // https://github.com/webpack/webpack/issues/16895

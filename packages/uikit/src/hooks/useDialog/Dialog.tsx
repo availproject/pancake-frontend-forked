@@ -16,6 +16,7 @@ type DialogProps = ModalV2Props &
     defaultValue?: string;
     confirmText?: string;
     cancelText?: string;
+    placeholder?: string;
     useInput: boolean;
     onConfirm: ((value: string) => void) | ((value: boolean) => void);
   };
