@@ -21,7 +21,7 @@
     "dev:solana": "pnpm turbo run dev --filter=solana-web... --concurrency=50",
     "storybook": "turbo run start --filter=@pancakeswap/uikit...",
     "build:storybook": "turbo run build:storybook --filter=@pancakeswap/uikit...",
-    "build": "turbo run build --filter=web...",
+    "build": "NODE_OPTIONS='--max-old-space-size=16384' turbo run build --filter=web...",
     "build:blog": "turbo run build --filter=blog...",
     "build:aptos": "turbo run build --filter=aptos-web...",
     "build:bridge": "turbo run build --filter=bridge...",
@@ -85,8 +85,6 @@
     "zod": "^3.22.3"
   },
   "pnpm": {
-    "patchedDependencies": {
-      "@ledgerhq/connect-kit-loader@1.1.2": "patches/@ledgerhq__connect-kit-loader@1.1.2.patch"
-    }
+    "patchedDependencies": {}
   }
 }
