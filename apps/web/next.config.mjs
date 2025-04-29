@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import BundleAnalyzer from '@next/bundle-analyzer'
+import { withWebSecurityHeaders } from '@pancakeswap/next-config/withWebSecurityHeaders'
+import smartRouterPkgs from '@pancakeswap/smart-router/package.json' with { type: 'json' }
 import { createVanillaExtractPlugin } from '@vanilla-extract/next-plugin'
 import vercelToolbarPlugin from '@vercel/toolbar/plugins/next'
 import path from 'path'
@@ -16,6 +18,11 @@ const withBundleAnalyzer = BundleAnalyzer({
 
 const withVanillaExtract = createVanillaExtractPlugin()
 
+const workerDeps = Object.keys(smartRouterPkgs.dependencies)
+  .map((d) => d.replace('@pancakeswap/', 'packages/'))
+  .concat(['/packages/smart-router/', '/packages/swap-sdk/', '/packages/token-lists/'])
+
+/** @type {import('next').NextConfig} */
 const config = {
   typescript: {
     tsconfigPath: 'tsconfig.json',
@@ -41,8 +48,6 @@ const config = {
     '@pancakeswap/widgets-internal',
     '@pancakeswap/ifos',
     '@pancakeswap/uikit',
-    '@pancakeswap/wagmi',
-    '@pancakeswap/canonical-bridge',
     // https://github.com/TanStack/query/issues/6560#issuecomment-1975771676
     '@tanstack/query-core',
   ],
@@ -185,7 +190,7 @@ const config = {
         source: '/images/tokens/:address',
         destination: 'https://tokens.pancakeswap.finance/images/:address',
         permanent: false,
-      },
+      }
     ]
   },
   webpack: (webpackConfig, { webpack, isServer }) => {
@@ -207,10 +212,6 @@ const config = {
         maxRetries: 5,
       }),
     )
-
-    // Define worker dependencies here
-    const workerDeps = []
-
     if (!isServer && webpackConfig.optimization.splitChunks) {
       // webpack doesn't understand worker deps on quote worker, so we need to manually add them
       // https://github.com/webpack/webpack/issues/16895
@@ -231,9 +232,5 @@ const config = {
 }
 
 export default withVercelToolbar(
-  withBundleAnalyzer(
-    withVanillaExtract({
-      ...config,
-    }),
-  ),
-)
+  withBundleAnalyzer(withVanillaExtract((withWebSecurityHeaders(config))),
+))
