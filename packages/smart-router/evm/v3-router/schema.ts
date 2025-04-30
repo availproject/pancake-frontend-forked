@@ -92,49 +92,34 @@ const zV4BinPool = z
 
 export const zPools = z.array(z.union([zV2Pool, zV3Pool, zStablePool, zV4ClPool, zV4BinPool]))
 
-export const zRouterGetParams = z
-  .object({
-    chainId: zChainId,
-    tradeType: zTradeType,
-    amount: zCurrencyAmount,
-    currency: zCurrency,
-    gasPriceWei: zBigNumber.optional(),
-    maxHops: z.number().optional(),
-    maxSplits: z.number().optional(),
-    blockNumber: zBigNumber.optional(),
-    poolTypes: zPoolTypes.optional(),
-  })
-  .required({
-    chainId: true,
-    tradeType: true,
-    amount: true,
-    currency: true,
-    // candidatePools: true,
-  })
+export const zRouterGetParams = z.object({
+  chainId: zChainId,
+  tradeType: zTradeType,
+  amount: zCurrencyAmount,
+  currency: zCurrency,
+  candidatePools: zPools,
+  gasPriceWei: zBigNumber.optional(),
+  maxHops: z.number().optional(),
+  maxSplits: z.number().optional(),
+  blockNumber: zBigNumber.optional(),
+  poolTypes: zPoolTypes.optional(),
+})
 
-export const zRouterPostParams = z
-  .object({
-    chainId: zChainId,
-    tradeType: zTradeType,
-    amount: zCurrencyAmount,
-    currency: zCurrency,
-    candidatePools: zPools,
-    gasPriceWei: zBigNumber.optional(),
-    maxHops: z.number().optional(),
-    maxSplits: z.number().optional(),
-    blockNumber: zBigNumber.optional(),
-    poolTypes: zPoolTypes.optional(),
-    onChainQuoterGasLimit: zBigNumber.optional(),
-    nativeCurrencyUsdPrice: z.number().optional(),
-    quoteCurrencyUsdPrice: z.number().optional(),
-  })
-  .required({
-    chainId: true,
-    tradeType: true,
-    amount: true,
-    currency: true,
-    candidatePools: true,
-  })
+export const zRouterPostParams = z.object({
+  chainId: zChainId,
+  tradeType: zTradeType,
+  amount: zCurrencyAmount,
+  currency: zCurrency,
+  candidatePools: zPools,
+  gasPriceWei: zBigNumber.optional(),
+  maxHops: z.number().optional(),
+  maxSplits: z.number().optional(),
+  blockNumber: zBigNumber.optional(),
+  poolTypes: zPoolTypes.optional(),
+  onChainQuoterGasLimit: zBigNumber.optional(),
+  nativeCurrencyUsdPrice: z.number().optional(),
+  quoteCurrencyUsdPrice: z.number().optional(),
+})
 
 export type RouterPostParams = z.infer<typeof zRouterPostParams>
 export type RouterGetParams = z.infer<typeof zRouterGetParams>

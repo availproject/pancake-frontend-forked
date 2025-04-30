@@ -35,11 +35,11 @@ const initialState: SwapState = {
   typedValue: '',
   [Field.INPUT]: {
     currencyId: 'USDT',
-    chainId: ChainId.BASE,
+    chainId: ChainId.ARBITRUM_ONE,
   },
   [Field.OUTPUT]: {
     currencyId: 'WETH',
-    chainId: ChainId.ARBITRUM_ONE,
+    chainId: ChainId.BASE,
   },
   pairDataById: {},
   derivedPairDataById: {},

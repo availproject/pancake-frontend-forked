@@ -31,7 +31,7 @@ export function FiatLogo({ currency, size = '24px', style }: LogoProps) {
   )
 }
 
-export default function CurrencyLogo({ currency, size = '24px', style }: LogoProps) {
+export default function CurrencyLogo({ currency, size = '24px', style }: Readonly<LogoProps>) {
   const uriLocations = useHttpLocations(currency instanceof WrappedTokenInfo ? currency.logoURI : undefined)
 
   const srcs: string[] = useMemo(() => {

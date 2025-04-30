@@ -297,7 +297,7 @@ export function useCurrency(currencyId: string | undefined): UnsafeCurrency {
 }
 
 const SHORT_SYMBOL = {
-  [ChainId.ETHEREUM]: 'ETH',
+  [ChainId.LINEA]: 'ETH',
   [ChainId.BASE]: 'BASE',
   [ChainId.ARBITRUM_ONE]: 'ARB',
 } as const

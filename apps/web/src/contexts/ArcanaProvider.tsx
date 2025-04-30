@@ -6,6 +6,8 @@ const ArcanaProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
+    const provider = window.ethereum
+    const ca = new CA()
     setIsMounted(true)
   }, [])
 

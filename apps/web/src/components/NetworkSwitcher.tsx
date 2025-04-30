@@ -13,7 +13,7 @@ import { chains as evmChains } from 'utils/wagmi'
 import { NetworkSwitcherModal, networkSwitcherModalAtom } from './NetworkSwitcherModal'
 
 const SHORT_SYMBOL = {
-  [ChainId.ETHEREUM]: 'ETH',
+  [ChainId.LINEA]: 'Linea',
 } as const
 
 export const NetworkSwitcher = () => {

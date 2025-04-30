@@ -261,7 +261,7 @@ export function useDefaultsFromURLSearch():
 
   useEffect(() => {
     if (!chainId || !isReady) return
-    const parsed = queryParametersToSwapState(query, lineaTokens.weth.address, USDT[chainId]?.address)
+    const parsed = queryParametersToSwapState(query, USDT[chainId]?.address, lineaTokens.weth.address)
 
     dispatch(
       replaceSwapState({
@@ -269,8 +269,8 @@ export function useDefaultsFromURLSearch():
         field: parsed.independentField,
         inputCurrencyId: parsed[Field.INPUT].currencyId,
         outputCurrencyId: parsed[Field.OUTPUT].currencyId,
-        inputCurrencyChainId: ChainId.BASE,
-        outputCurrencyChainId: ChainId.ARBITRUM_ONE,
+        inputCurrencyChainId: ChainId.ARBITRUM_ONE,
+        outputCurrencyChainId: ChainId.BASE,
         recipient: null,
       }),
     )

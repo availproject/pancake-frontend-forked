@@ -42,7 +42,7 @@ import ArcanaSwapButton from './ArcanaSwapButton'
 
 const SettingsModalWithCustomDismiss = withCustomOnDismiss(SettingsModalV2)
 
-interface SwapCommitButtonPropsType {
+export interface SwapCommitButtonPropsType {
   order?: PriceOrder
   tradeError?: Error | null
   tradeLoading?: boolean
@@ -120,7 +120,7 @@ const SwapCommitButtonComp: React.FC<SwapCommitButtonPropsType & CommitButtonPro
     <UnsupportedSwapButtonReplace>
       <ConnectButtonReplace>
         <WrapCommitButtonReplace>
-          {props?.withArcana ? <ArcanaSwapButton /> : <SwapCommitButtonInner {...props} />}
+          {props?.withArcana ? <ArcanaSwapButton order={props.order} /> : <SwapCommitButtonInner {...props} />}
         </WrapCommitButtonReplace>
       </ConnectButtonReplace>
     </UnsupportedSwapButtonReplace>
