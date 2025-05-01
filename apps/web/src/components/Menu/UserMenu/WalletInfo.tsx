@@ -12,19 +12,12 @@ import {
   TooltipText,
   useTooltip,
 } from '@pancakeswap/uikit'
+import InternalLink from 'components/Links'
 import useActiveWeb3React from 'hooks/useActiveWeb3React'
 import useAuth from 'hooks/useAuth'
-
-import { useBalances } from '@arcana/ca-wagmi'
-import InternalLink from 'components/Links'
 import { useDomainNameForAddress } from 'hooks/useDomain'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { isMobile } from 'react-device-detect'
-
-const COLORS = {
-  ETH: '#627EEA',
-  BNB: '#14151A',
-}
 
 interface WalletInfoProps {
   hasLowNativeBalance: boolean
@@ -37,12 +30,25 @@ const WalletInfo: React.FC<WalletInfoProps> = ({ hasLowNativeBalance, onDismiss 
   const { account, chain } = useActiveWeb3React()
   const { domainName } = useDomainNameForAddress(account ?? '')
   const { logout } = useAuth()
-  const { data: allBalances } = useBalances()
+  const [allBalances, setAllBalances] = useState<any>([])
   const [mobileTooltipShow, setMobileTooltipShow] = useState(false)
+
   const currentBalance = useMemo(() => {
     const filteredBalances = allBalances?.filter((balance) => balance.symbol === 'USDT')
+    console.log('filteredBalances', filteredBalances)
     return filteredBalances
   }, [allBalances])
+
+  useEffect(() => {
+    const fetchBalances = async () => {
+      if (ca) {
+        const balances = await ca.getUnifiedBalances()
+        console.log('balances', balances)
+        setAllBalances(balances || [])
+      }
+    }
+    fetchBalances()
+  }, [])
 
   const handleLogout = () => {
     onDismiss?.()
@@ -73,7 +79,7 @@ const WalletInfo: React.FC<WalletInfoProps> = ({ hasLowNativeBalance, onDismiss 
       ...(isMobile && { manualVisible: mobileTooltipShow }),
     },
   )
-  const showNativeEntryPoint = Number(currentBalance?.[0].value) === 0
+  const showNativeEntryPoint = Number(currentBalance?.[0]?.value) === 0
 
   return (
     <>
@@ -88,14 +94,14 @@ const WalletInfo: React.FC<WalletInfoProps> = ({ hasLowNativeBalance, onDismiss 
         <Box mb="16px">
           <Flex alignItems="center" justifyContent="space-between">
             <Text color="textSubtle">
-              {currentBalance?.[0].symbol} {t('Balance')}
+              {currentBalance?.[0]?.symbol} {t('Balance')}
             </Text>
             {!allBalances ? (
               <Skeleton height="22px" width="60px" />
             ) : (
               <Flex>
                 <Text color="text" fontWeight="normal">
-                  {currentBalance?.[0].formatted}
+                  {currentBalance?.[0]?.balance}
                 </Text>
                 {showNativeEntryPoint ? (
                   <TooltipText

@@ -37,8 +37,8 @@ import { useSwapConfig } from '../../Swap/V3Swap/hooks/useSwapConfig'
 import { useSwapCurrency } from '../../Swap/V3Swap/hooks/useSwapCurrency'
 import { CommitButtonProps } from '../../Swap/V3Swap/types'
 import { computeTradePriceBreakdown } from '../../Swap/V3Swap/utils/exchange'
+import ArcanaSwapButton from '../Arcana/ArcanaSwapButton'
 import { useIsRecipientError } from '../hooks/useIsRecipientError'
-import ArcanaSwapButton from './ArcanaSwapButton'
 
 const SettingsModalWithCustomDismiss = withCustomOnDismiss(SettingsModalV2)
 
@@ -47,6 +47,7 @@ export interface SwapCommitButtonPropsType {
   tradeError?: Error | null
   tradeLoading?: boolean
   withArcana?: boolean
+  refreshOrder?: () => void
 }
 
 const useSettingModal = (onDismiss) => {
@@ -120,7 +121,11 @@ const SwapCommitButtonComp: React.FC<SwapCommitButtonPropsType & CommitButtonPro
     <UnsupportedSwapButtonReplace>
       <ConnectButtonReplace>
         <WrapCommitButtonReplace>
-          {props?.withArcana ? <ArcanaSwapButton order={props.order} /> : <SwapCommitButtonInner {...props} />}
+          {props?.withArcana ? (
+            <ArcanaSwapButton order={props.order} refreshOrder={props.refreshOrder} />
+          ) : (
+            <SwapCommitButtonInner {...props} />
+          )}
         </WrapCommitButtonReplace>
       </ConnectButtonReplace>
     </UnsupportedSwapButtonReplace>
@@ -141,7 +146,7 @@ const SwapCommitButtonInner = memo(function SwapCommitButtonInner({
   const chainId = useChainId()
   // form data
   const { independentField } = useSwapState()
-  const [inputCurrency, outputCurrency, inputCurrencyChain, outputCurrencyChain] = useSwapCurrency()
+  const [inputCurrency, outputCurrency] = useSwapCurrency()
   const { isExpertMode } = useSwapConfig()
   const { isRecipientEmpty, isRecipientError } = useIsRecipientError()
 

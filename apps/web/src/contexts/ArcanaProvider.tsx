@@ -1,19 +1,148 @@
-import { CAProvider } from '@arcana/ca-wagmi'
-import { useEffect, useState } from 'react'
+import { CA } from '@arcana/ca-sdk'
+import React, { createContext, Dispatch, SetStateAction, useCallback, useContext, useMemo, useState } from 'react'
+
+export type ArcanaBridgingState =
+  | 'idle'
+  | 'pending'
+  | 'bridging_in'
+  | 'swapping'
+  | 'bridging_out'
+  | 'success'
+  | 'error'
+  | 'checking_chains'
+
+interface AllowanceRequestData {
+  sources: any[]
+}
+
+interface IntentRequestData {
+  intent: any
+  refresh: () => void
+}
+
+interface AllowanceModalTrigger {
+  data: AllowanceRequestData
+  resolve: (allowances: any[]) => void
+  reject: (reason?: any) => void
+}
+
+interface IntentModalTrigger {
+  data: IntentRequestData
+  resolve: () => void
+  reject: (reason?: any) => void
+}
+
+interface ArcanaContextType {
+  ca: CA | null
+  isLoading: boolean
+  error: Error | null
+  bridgingState: ArcanaBridgingState
+  setBridgingState: Dispatch<SetStateAction<ArcanaBridgingState>>
+  allowanceModal: AllowanceModalTrigger | null
+  setAllowanceModal: Dispatch<SetStateAction<AllowanceModalTrigger | null>>
+  intentModal: IntentModalTrigger | null
+  setIntentModal: Dispatch<SetStateAction<IntentModalTrigger | null>>
+  initArcana: () => Promise<void>
+}
+
+const ArcanaContext = createContext<ArcanaContextType | undefined>(undefined)
 
 const ArcanaProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
-  const [isMounted, setIsMounted] = useState(false)
+  const [ca, setCa] = useState<CA | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<Error | null>(null)
+  const [bridgingState, setBridgingState] = useState<ArcanaBridgingState>('idle')
+  const [allowanceModal, setAllowanceModal] = useState<AllowanceModalTrigger | null>(null)
+  const [intentModal, setIntentModal] = useState<IntentModalTrigger | null>(null)
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const provider = window.ethereum
-    const ca = new CA()
-    setIsMounted(true)
-  }, [])
+  const initArcana = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    setAllowanceModal(null)
+    setIntentModal(null)
 
-  if (!isMounted) return <>{children}</>
+    if (typeof window === 'undefined' || !window.ethereum) {
+      console.error('Window or Ethereum provider not available for Arcana initialization.')
+      setError(new Error('Ethereum provider not available'))
+      setIsLoading(false)
+      return
+    }
 
-  return <CAProvider>{children}</CAProvider>
+    const provider = window?.ethereum
+    console.log('provider object being passed to Arcana:', provider)
+    const caInstance = new CA()
+    caInstance.setEVMProvider(provider as any)
+
+    try {
+      await caInstance.init()
+      setCa(caInstance)
+      console.log('Arcana CA initialized successfully.')
+      caInstance.setOnAllowanceHook(async ({ allow, deny, sources }) => {
+        console.log('setOnAllowanceHook triggered:', sources)
+        try {
+          const chosenAllowances = await new Promise<any[]>((resolve, reject) => {
+            setAllowanceModal({ data: { sources }, resolve, reject })
+          })
+          console.log('Allowance approved via UI:', chosenAllowances)
+          allow(chosenAllowances)
+        } catch (rejectionReason) {
+          console.log('Allowance denied via UI:', rejectionReason)
+          deny()
+        } finally {
+          setAllowanceModal(null)
+        }
+      })
+
+      caInstance.setOnIntentHook(({ intent, allow, deny, refresh }) => {
+        console.log('setOnIntentHook triggered:', intent)
+        new Promise<void>((resolve, reject) => {
+          setIntentModal({ data: { intent, refresh }, resolve, reject })
+        })
+          .then(() => {
+            console.log('Intent approved via UI.')
+            allow()
+          })
+          .catch((rejectionReason) => {
+            console.log('Intent denied via UI:', rejectionReason)
+            deny()
+          })
+          .finally(() => {
+            setIntentModal(null)
+          })
+      })
+    } catch (err) {
+      console.error('Failed to initialize Arcana CA or set hooks:', err)
+      setError(err instanceof Error ? err : new Error('Failed to initialize Arcana CA'))
+    } finally {
+      setIsLoading(false)
+    }
+  }, [setAllowanceModal, setIntentModal])
+
+  const contextValue = useMemo(
+    () => ({
+      ca,
+      isLoading,
+      error,
+      bridgingState,
+      setBridgingState,
+      allowanceModal,
+      setAllowanceModal,
+      intentModal,
+      setIntentModal,
+      initArcana,
+    }),
+    [ca, isLoading, error, bridgingState, allowanceModal, intentModal],
+  )
+
+  return <ArcanaContext.Provider value={contextValue}>{children}</ArcanaContext.Provider>
+}
+
+export const useArcana = (): ArcanaContextType => {
+  const context = useContext(ArcanaContext)
+  if (context === undefined) {
+    throw new Error('useArcana must be used within an ArcanaProvider')
+  }
+  return context
 }
 
 export default ArcanaProvider

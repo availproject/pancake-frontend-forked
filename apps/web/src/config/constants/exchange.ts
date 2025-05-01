@@ -70,7 +70,7 @@ export const SUGGESTED_BASES: ChainTokenList = {
   [ChainId.POLYGON_ZKEVM_TESTNET]: [polygonZkEvmTestnetTokens.weth, polygonZkEvmTestnetTokens.usdt],
   [ChainId.ZKSYNC]: [zksyncTokens.usdcNative, zksyncTokens.usdc, zksyncTokens.weth],
   [ChainId.ZKSYNC_TESTNET]: [zkSyncTestnetTokens.usdc, zkSyncTestnetTokens.weth],
-  [ChainId.LINEA]: [lineaTokens.usdt, lineaTokens.weth],
+  [ChainId.LINEA]: [lineaTokens.usdt, lineaTokens.usdc],
   [ChainId.LINEA_TESTNET]: [lineaTestnetTokens.usdc, lineaTestnetTokens.weth],
   [ChainId.OPBNB]: [opBnbTokens.wbnb, opBnbTokens.usdt],
   [ChainId.OPBNB_TESTNET]: [

@@ -22,9 +22,9 @@ import isUndefinedOrNull from '@pancakeswap/utils/isUndefinedOrNull'
 import { useStablecoinPriceAmount } from 'hooks/useStablecoinPrice'
 import { StablePair } from 'views/AddLiquidity/AddStableLiquidity/hooks/useStableLPDerivedMintInfo'
 
-import { useBalances } from '@arcana/ca-wagmi'
 import { RiskInputPanelDisplay } from 'components/AccessRisk/SwapRevampRiskDisplay'
 import { FiatLogo } from 'components/Logo/CurrencyLogo'
+import { useArcana } from 'contexts/ArcanaProvider'
 import { useAccount } from 'wagmi'
 import CurrencySearchModal from '../SearchModal/CurrencySearchModal'
 import { FONT_SIZE, LOGO_SIZE, useFontSize } from './state'
@@ -219,6 +219,7 @@ const CurrencyInputPanelSimplify = memo(function CurrencyInputPanel({
   const { address: account } = useAccount()
   // const value = useRef<string | undefined>(defaultValue)
   const [value, setValue] = useState<string | undefined>(defaultValue)
+  const [allBalances, setAllBalances] = useState<any[] | null>(null)
 
   const { t } = useTranslation()
 
@@ -257,6 +258,25 @@ const CurrencyInputPanelSimplify = memo(function CurrencyInputPanel({
     currency?.symbol,
     otherCurrency?.symbol,
   )
+  const { ca } = useArcana()
+
+  useEffect(() => {
+    const fetchBalances = async () => {
+      if (ca) {
+        try {
+          const balances = await ca.getUnifiedBalances()
+          setAllBalances(balances || [])
+        } catch (balanceError) {
+          console.error('Failed to fetch unified balances:', balanceError)
+          setAllBalances(null)
+        }
+      } else {
+        setAllBalances(null)
+      }
+    }
+
+    fetchBalances()
+  }, [ca])
 
   useEffect(() => {
     if (isInputFocus) {
@@ -299,28 +319,34 @@ const CurrencyInputPanelSimplify = memo(function CurrencyInputPanel({
     }
   }, [onPresentCurrencyModal, disableCurrencySelect])
 
-  const { data: allBalances } = useBalances()
-
   const currentBalance = useMemo(() => {
-    const filteredBalances = allBalances?.filter((balance) => balance.symbol === currency?.symbol)
-    return filteredBalances
+    if (!allBalances || !currency) {
+      return null
+    }
+    const filteredBalances = allBalances.filter((balance) => balance.symbol === currency.symbol)
+    return filteredBalances.length > 0 ? filteredBalances : null
   }, [allBalances, currency])
 
   const balance = useMemo(
     () =>
-      !hideBalance && !!currency && currentBalance?.[0]?.value && !isUndefinedOrNull(currentBalance?.[0]?.value)
-        ? currentBalance?.[0]?.formatted
+      !hideBalance && !!currency && currentBalance?.[0]?.balance && !isUndefinedOrNull(currentBalance?.[0]?.balance)
+        ? currentBalance?.[0]?.balance
         : undefined,
     [currentBalance, currency, hideBalance],
   )
 
   const balanceOnSelectedChain = useMemo(() => {
-    if (!hideBalance && !!currency && currentBalance?.[0]?.value && !isUndefinedOrNull(currentBalance?.[0]?.value)) {
+    if (
+      !hideBalance &&
+      !!currency &&
+      currentBalance?.[0]?.balance &&
+      !isUndefinedOrNull(currentBalance?.[0]?.balance)
+    ) {
       const balance_ = currentBalance?.[0]
       const selectedChainBalance = balance_?.breakdown?.filter((balanceItem) => balanceItem?.chain?.id === chainId)
       return {
         symbol: currency?.symbol,
-        selectedBalance: selectedChainBalance?.[0]?.formatted,
+        selectedBalance: selectedChainBalance?.[0]?.balance,
         chainName: selectedChainBalance?.[0]?.chain?.name,
       }
     }

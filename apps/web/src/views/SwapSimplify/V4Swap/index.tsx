@@ -156,6 +156,7 @@ export function V4SwapForm() {
           <CommitButton
             order={bestOrder}
             tradeLoaded={tradeLoaded}
+            refreshOrder={refreshOrder}
             tradeError={tradeError}
             {...commitHooks}
             withArcana

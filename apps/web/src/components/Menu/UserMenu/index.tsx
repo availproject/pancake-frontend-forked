@@ -14,6 +14,7 @@ import {
 import ConnectWalletButton from 'components/ConnectWalletButton'
 import useAirdropModalStatus from 'components/GlobalCheckClaimStatus/hooks/useAirdropModalStatus'
 import Trans from 'components/Trans'
+import { useArcana } from 'contexts/ArcanaProvider'
 import { useActiveChainId } from 'hooks/useActiveChainId'
 import useAuth from 'hooks/useAuth'
 import { useDomainNameForAddress } from 'hooks/useDomain'
@@ -35,7 +36,7 @@ const UserMenuItems = () => {
   const { hasPendingTransactions } = usePendingTransactions()
   const { isInitialized, isLoading, profile } = useProfile()
   const { shouldShowModal } = useAirdropModalStatus()
-
+  const { ca, initArcana } = useArcana()
   const [onPresentWalletModal] = useModal(<WalletModal initialView={WalletView.WALLET_INFO} />)
   const [onPresentTransactionModal] = useModal(<WalletModal initialView={WalletView.TRANSACTIONS} />)
   const [onPresentWrongNetworkModal] = useModal(<WalletModal initialView={WalletView.WRONG_NETWORK} />)
@@ -48,6 +49,13 @@ const UserMenuItems = () => {
       onPresentWalletModal()
     }
   }, [isWrongNetwork, onPresentWalletModal, onPresentWrongNetworkModal])
+
+  useEffect(() => {
+    initArcana()
+    if (!ca) {
+      initArcana()
+    }
+  }, [ca, initArcana])
 
   return (
     <>

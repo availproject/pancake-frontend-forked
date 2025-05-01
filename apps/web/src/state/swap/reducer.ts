@@ -38,7 +38,7 @@ const initialState: SwapState = {
     chainId: ChainId.ARBITRUM_ONE,
   },
   [Field.OUTPUT]: {
-    currencyId: 'WETH',
+    currencyId: 'USDC',
     chainId: ChainId.BASE,
   },
   pairDataById: {},
