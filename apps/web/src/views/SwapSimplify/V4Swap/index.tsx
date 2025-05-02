@@ -159,7 +159,6 @@ export function V4SwapForm() {
             refreshOrder={refreshOrder}
             tradeError={tradeError}
             {...commitHooks}
-            withArcana
           />
         }
         mevSlot={<MevSwapDetail />}

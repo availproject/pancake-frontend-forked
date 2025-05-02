@@ -114,6 +114,7 @@ const reducer = createReducer<SwapState>(initialState, (builder) =>
       }
     })
     .addCase(typeInput, (state, { payload: { field, typedValue } }) => {
+      console.log('typeInput in reducer', { field, typedValue })
       return {
         ...state,
         independentField: field,

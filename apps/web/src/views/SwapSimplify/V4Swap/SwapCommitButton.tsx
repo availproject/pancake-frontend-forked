@@ -17,6 +17,7 @@ import {
 } from 'components/Menu/GlobalSettings/SettingsModalV2'
 import { SettingsMode } from 'components/Menu/GlobalSettings/types'
 import { BIG_INT_ZERO } from 'config/constants/exchange'
+import { useArcana } from 'contexts/ArcanaProvider'
 import { useCurrency } from 'hooks/Tokens'
 import { useIsTransactionUnsupported } from 'hooks/Trades'
 import { NoValidRouteError } from 'hooks/useBestAMMTrade'
@@ -37,7 +38,6 @@ import { useSwapConfig } from '../../Swap/V3Swap/hooks/useSwapConfig'
 import { useSwapCurrency } from '../../Swap/V3Swap/hooks/useSwapCurrency'
 import { CommitButtonProps } from '../../Swap/V3Swap/types'
 import { computeTradePriceBreakdown } from '../../Swap/V3Swap/utils/exchange'
-import ArcanaSwapButton from '../Arcana/ArcanaSwapButton'
 import { useIsRecipientError } from '../hooks/useIsRecipientError'
 
 const SettingsModalWithCustomDismiss = withCustomOnDismiss(SettingsModalV2)
@@ -121,11 +121,7 @@ const SwapCommitButtonComp: React.FC<SwapCommitButtonPropsType & CommitButtonPro
     <UnsupportedSwapButtonReplace>
       <ConnectButtonReplace>
         <WrapCommitButtonReplace>
-          {props?.withArcana ? (
-            <ArcanaSwapButton order={props.order} refreshOrder={props.refreshOrder} />
-          ) : (
-            <SwapCommitButtonInner {...props} />
-          )}
+          <SwapCommitButtonInner {...props} />
         </WrapCommitButtonReplace>
       </ConnectButtonReplace>
     </UnsupportedSwapButtonReplace>
@@ -142,6 +138,7 @@ const SwapCommitButtonInner = memo(function SwapCommitButtonInner({
   afterCommit,
 }: SwapCommitButtonPropsType & CommitButtonProps) {
   const { address: account } = useAccount()
+  const { intentModal } = useArcana()
   const { t } = useTranslation()
   const chainId = useChainId()
   // form data
@@ -159,11 +156,7 @@ const SwapCommitButtonInner = memo(function SwapCommitButtonInner({
   const priceImpactSeverity = warningSeverity(
     tradePriceBreakdown ? tradePriceBreakdown.priceImpactWithoutFee : undefined,
   )
-
-  const relevantTokenBalances = useCurrencyBalances(account ?? undefined, [
-    inputCurrency ?? undefined,
-    outputCurrency ?? undefined,
-  ])
+  const relevantTokenBalances = useCurrencyBalances(account ?? undefined, [inputCurrency, outputCurrency])
   const currencyBalances = useMemo(
     () => ({
       [Field.INPUT]: relevantTokenBalances[0],
@@ -220,6 +213,7 @@ const SwapCommitButtonInner = memo(function SwapCommitButtonInner({
     () => (isClassicOrder(order) && !((order.trade?.routes?.length ?? 0) > 0)) || hasNoValidRouteError,
     [order, hasNoValidRouteError],
   )
+  console.log('swapInputError', swapInputError)
   const isValid = useMemo(() => !swapInputError && !tradeLoading, [swapInputError, tradeLoading])
   const disabled = useMemo(
     () => !isValid || (priceImpactSeverity > 3 && !isExpertMode) || isRecipientEmpty || isRecipientError,
@@ -255,6 +249,7 @@ const SwapCommitButtonInner = memo(function SwapCommitButtonInner({
       onConfirm={onConfirm}
       openSettingModal={openSettingModal}
       customOnDismiss={reset}
+      intentModal={intentModal}
     />,
     true,
     true,

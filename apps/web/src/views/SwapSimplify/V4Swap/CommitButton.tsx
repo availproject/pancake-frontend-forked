@@ -8,7 +8,6 @@ export type CommitButtonProps = {
   refreshOrder?: () => void
   beforeCommit?: () => void
   afterCommit?: () => void
-  withArcana?: boolean
 }
 
 export const CommitButton: React.FC<CommitButtonProps> = ({
@@ -18,7 +17,6 @@ export const CommitButton: React.FC<CommitButtonProps> = ({
   refreshOrder,
   beforeCommit,
   afterCommit,
-  withArcana = false,
 }) => {
   return (
     <SwapCommitButton
@@ -28,7 +26,6 @@ export const CommitButton: React.FC<CommitButtonProps> = ({
       refreshOrder={refreshOrder}
       beforeCommit={beforeCommit}
       afterCommit={afterCommit}
-      withArcana={withArcana}
     />
   )
 }

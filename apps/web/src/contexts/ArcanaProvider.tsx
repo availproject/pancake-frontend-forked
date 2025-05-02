@@ -10,6 +10,13 @@ export type ArcanaBridgingState =
   | 'success'
   | 'error'
   | 'checking_chains'
+  | 'fetching_quote'
+  | 'waiting_for_swap_trigger'
+  | 'waiting_for_balance_update'
+  | 'updating_swap_input'
+  | 'waiting_for_second_bridge'
+  | 'second_bridge_pending'
+  | 'second_bridge_success'
 
 interface AllowanceRequestData {
   sources: any[]
@@ -26,7 +33,7 @@ interface AllowanceModalTrigger {
   reject: (reason?: any) => void
 }
 
-interface IntentModalTrigger {
+export interface IntentModalTrigger {
   data: IntentRequestData
   resolve: () => void
   reject: (reason?: any) => void

@@ -1,8 +1,6 @@
-import { CA } from '@arcana/ca-sdk'
 import { useTranslation } from '@pancakeswap/localization'
-import { CurrencyAmount, Fraction, ONE, TradeType } from '@pancakeswap/sdk'
-import { V4TradeWithoutGraph } from '@pancakeswap/smart-router/dist/evm/v4-router'
 import { Box, Loading, Text, useModal } from '@pancakeswap/uikit'
+import tryParseAmount from '@pancakeswap/utils/tryParseAmount'
 import { CommitButton } from 'components/CommitButton'
 import { useArcana } from 'contexts/ArcanaProvider'
 import Decimal from 'decimal.js'
@@ -10,57 +8,28 @@ import { useCurrency, useSwapChain } from 'hooks/Tokens'
 import { useActiveChainId } from 'hooks/useActiveChainId'
 import { useAutoSlippageWithFallback } from 'hooks/useAutoSlippageWithFallback'
 import { useTransactionDeadline } from 'hooks/useTransactionDeadline'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useAppDispatch } from 'state'
 import { Field } from 'state/swap/actions'
 import { useSwapState } from 'state/swap/hooks'
+import { useSwapActionHandlers } from 'state/swap/useSwapActionHandlers'
+import { useAllTypeBestTrade } from 'views/Swap/V3Swap/hooks/useAllTypeBestTrade'
 import { useSwapCallback } from 'views/Swap/V3Swap/hooks/useSwapCallback'
-import { isClassicOrder } from 'views/Swap/utils'
 import { useAccount } from 'wagmi'
-import { CommitButtonProps } from '../../Swap/V3Swap/types'
 import { ArcanaConfirmBridgeModal } from './ArcanaBridgeModal'
-import { ArcanaSwapButtonPropsType, ExtendedBridgingState } from './types'
-import { getBalanceOnChain, retryWaitForTransaction } from './utils/util'
+import { ExtendedBridgingState } from './types'
+import { waitForBalanceUpdate } from './utils/util'
 
-async function waitForBalanceUpdate(
-  ca: CA,
-  tokenSymbol: string,
-  targetChainId: number,
-  expectedMinimumAmount: Decimal,
-  timeoutMs: number = 120000,
-  pollIntervalMs: number = 5000,
-): Promise<{ balance: Decimal; balanceStr: string } | null> {
-  const startTime = Date.now()
-  const initialBalanceInfo = await getBalanceOnChain(ca, tokenSymbol, targetChainId)
-  console.log(
-    `Polling for balance update: ${tokenSymbol} on chain ${targetChainId}. Initial: ${
-      initialBalanceInfo?.balanceStr ?? 'N/A'
-    }. Expecting >= ${expectedMinimumAmount.toString()}`,
-  )
-
-  while (Date.now() - startTime < timeoutMs) {
-    // eslint-disable-next-line no-await-in-loop
-    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs))
-    // eslint-disable-next-line no-await-in-loop
-    const currentBalanceInfo = await getBalanceOnChain(ca, tokenSymbol, targetChainId)
-
-    if (currentBalanceInfo && currentBalanceInfo.balance.gte(expectedMinimumAmount)) {
-      console.log(`Balance confirmed for ${tokenSymbol} on chain ${targetChainId}: ${currentBalanceInfo.balanceStr}`)
-      return currentBalanceInfo
-    }
-    console.log(
-      `Polling balance for ${tokenSymbol} on chain ${targetChainId}... Current: ${
-        currentBalanceInfo?.balanceStr ?? 'N/A'
-      }`,
-    )
-  }
-  console.error(`Timeout waiting for balance update for ${tokenSymbol} on chain ${targetChainId}`)
-  return null
+interface ArcanaSwapButtonProps {
+  order: any
+  refreshOrder?: () => void
 }
 
-const ArcanaSwapButton: React.FC<ArcanaSwapButtonPropsType & CommitButtonProps> = ({ order, refreshOrder }) => {
+const ArcanaSwapButton: React.FC<ArcanaSwapButtonProps> = ({ order, refreshOrder }) => {
   const { t } = useTranslation()
   const { address } = useAccount()
   const { chainId: sourceChainId } = useActiveChainId()
+  const dispatch = useAppDispatch()
   const { ca, bridgingState, setBridgingState: setBaseBridgingState, allowanceModal, intentModal } = useArcana()
   const executionBridgingState = bridgingState as ExtendedBridgingState
   const setBridgingState = setBaseBridgingState as React.Dispatch<React.SetStateAction<ExtendedBridgingState>>
@@ -69,33 +38,43 @@ const ArcanaSwapButton: React.FC<ArcanaSwapButtonPropsType & CommitButtonProps> 
   const [unifiedBalances, setUnifiedBalances] = useState<any[] | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [txHash, setTxHash] = useState<string | null>(null)
-
-  const [tradeForExecution, setTradeForExecution] = useState<V4TradeWithoutGraph<TradeType> | null>(null)
+  const [tradeForExecution, setTradeForExecution] = useState<any>(null)
   const [isReadyToSwap, setIsReadyToSwap] = useState(false)
-  const [isWaitingForRefresh, setIsWaitingForRefresh] = useState(false)
-
-  const previousOrderRef = useRef(order)
-  useEffect(() => {
-    previousOrderRef.current = order
-  }, [order])
+  const { bestOrder } = useAllTypeBestTrade()
 
   const { slippageTolerance: allowedSlippage } = useAutoSlippageWithFallback()
 
   const {
     [Field.INPUT]: { currencyId: inputCurrencyId, chainId: inputCurrencyChainId },
     [Field.OUTPUT]: { currencyId: outputCurrencyId, chainId: outputCurrencyChainId },
+    typedValue,
   } = useSwapState()
 
   const inputCurrency = useCurrency(inputCurrencyId)
   const outputCurrency = useCurrency(outputCurrencyId)
-
-  const initialInputAmount = order?.trade?.inputAmount
-  const initialOutputAmount = order?.trade?.outputAmount
-
   const { chain: inputChainInUI } = useSwapChain(inputCurrencyChainId)
   const { chain: outputChainInUI } = useSwapChain(outputCurrencyChainId, 'output')
   const { chain: sourceChain } = useSwapChain(sourceChainId)
 
+  const initialInputCurrencyAmount = useMemo(() => {
+    if (order?.trade?.inputAmount) {
+      return order.trade.inputAmount
+    }
+    if (inputCurrency && typedValue) {
+      try {
+        return tryParseAmount(typedValue, inputCurrency)
+      } catch (error) {
+        console.warn('Error parsing typed value:', error)
+      }
+    }
+    return undefined
+  }, [order?.trade?.inputAmount, inputCurrency, typedValue])
+
+  const initialInputAmountExact = useMemo(() => initialInputCurrencyAmount?.toExact(), [initialInputCurrencyAmount])
+
+  const initialOutputAmount = order?.trade?.outputAmount
+
+  const { onUserInput } = useSwapActionHandlers()
   const [deadline] = useTransactionDeadline()
 
   const { callback: swapCallback, error: swapCallbackError } = useSwapCallback({
@@ -122,9 +101,8 @@ const ArcanaSwapButton: React.FC<ArcanaSwapButtonPropsType & CommitButtonProps> 
         setBalanceLoading(false)
       }
     }
-
     fetchBalances()
-  }, [ca])
+  }, [ca, order])
 
   const getTotalAssetBalance = useCallback(
     (symbol?: string) => {
@@ -135,33 +113,30 @@ const ArcanaSwapButton: React.FC<ArcanaSwapButtonPropsType & CommitButtonProps> 
     [unifiedBalances],
   )
 
-  const executeBridgeAndTriggerRefresh = useCallback(async (): Promise<boolean> => {
-    if (
-      !ca ||
-      !initialInputAmount ||
-      !inputCurrency?.symbol ||
-      !inputChainInUI ||
-      !outputChainInUI ||
-      !initialOutputAmount ||
-      !outputCurrency ||
-      !refreshOrder
-    ) {
-      console.error('Missing initial required data or refresh function for executeBridgeAndTriggerRefresh')
+  const executeBridgeAndInitiateSwapInputUpdate = useCallback(async (): Promise<boolean> => {
+    if (!initialInputAmountExact || initialInputAmountExact === '0') {
+      console.error('Initial input amount is missing or zero.')
+      setErrorMessage(t('Please enter an amount to swap.'))
+      setBridgingState('error')
+      return false
+    }
+
+    if (!ca || !inputCurrency?.symbol || !inputChainInUI || !outputChainInUI || !outputCurrency || !refreshOrder) {
+      console.error('Missing initial required data or connection for executeBridgeAndInitiateSwapInputUpdate')
       setErrorMessage(t('Internal error: Missing initial data or connection.'))
       setBridgingState('error')
       return false
     }
 
     const inputTokenSymbol = inputCurrency.symbol
-    const initialInputAmountExact = initialInputAmount.toExact()
     const initialInputAmountDecimal = new Decimal(initialInputAmountExact)
+    const minimumExpectedBalanceDecimal = initialInputAmountDecimal.mul(0.999)
 
     setTxHash(null)
     setBridgingState('pending')
     setErrorMessage(null)
     setTradeForExecution(null)
     setIsReadyToSwap(false)
-    setIsWaitingForRefresh(false)
 
     try {
       console.log(`Executing Arcana Bridge 1: ${initialInputAmountExact} ${inputTokenSymbol}...`)
@@ -175,25 +150,31 @@ const ArcanaSwapButton: React.FC<ArcanaSwapButtonPropsType & CommitButtonProps> 
       console.log('Arcana Bridge 1 exec() completed:', bridgeResult1)
 
       console.log(`Waiting for balance of ${inputTokenSymbol} on chain ${inputChainInUI.id}...`)
+      setBridgingState('waiting_for_balance_update')
       const updatedBalanceInfo = await waitForBalanceUpdate(
         ca,
         inputTokenSymbol,
         inputChainInUI.id,
-        initialInputAmountDecimal,
+        minimumExpectedBalanceDecimal,
       )
 
-      if (!updatedBalanceInfo || updatedBalanceInfo.balance.lt(initialInputAmountDecimal)) {
+      if (!updatedBalanceInfo || updatedBalanceInfo.balance.isZero()) {
         throw new Error(`Failed to receive sufficient ${inputTokenSymbol} on chain ${inputChainInUI.id}`)
       }
 
-      console.log('Triggering order refresh...')
-      setBridgingState('fetching_quote')
-      refreshOrder()
-      setIsWaitingForRefresh(true)
+      console.log(`Balance confirmed: ${updatedBalanceInfo.balanceStr}. Proceeding to update swap input.`)
+      onUserInput(Field.INPUT, updatedBalanceInfo.balanceStr)
+      setBridgingState('updating_swap_input')
+      setTimeout(() => {
+        console.log('Moving to fetching quote state...')
+        setBridgingState('fetching_quote')
+        console.log('order updated', { order, bestOrder })
+        setTradeForExecution(order?.trade)
+      }, 2000)
 
       return true
     } catch (error: any) {
-      console.error('Arcana operation failed during bridge or triggering refresh:', error)
+      console.error('Arcana operation failed during initial bridge or balance check:', error)
       const rejectionMessage = t('Transaction rejected')
       const isUserRejection =
         error?.message?.includes('rejected') || error?.message?.includes('denied') || error?.code === 4001
@@ -206,13 +187,12 @@ const ArcanaSwapButton: React.FC<ArcanaSwapButtonPropsType & CommitButtonProps> 
       return false
     }
   }, [
+    initialInputAmountExact,
     ca,
-    initialInputAmount,
     inputCurrency,
     outputCurrency,
     inputChainInUI,
     outputChainInUI,
-    initialOutputAmount,
     refreshOrder,
     t,
     setBridgingState,
@@ -220,201 +200,101 @@ const ArcanaSwapButton: React.FC<ArcanaSwapButtonPropsType & CommitButtonProps> 
     setTxHash,
   ])
 
-  useEffect(() => {
-    if (!isWaitingForRefresh) {
+  const executeSecondBridge = useCallback(async () => {
+    if (!ca || !outputCurrency || !outputChainInUI) {
+      console.error('Missing required dependencies for second bridge')
       return
     }
-    if (order && order !== previousOrderRef.current) {
-      console.log('Detected refreshed order via prop change:', order)
-      if (isClassicOrder(order) && order.trade) {
-        setTradeForExecution(order.trade as unknown as V4TradeWithoutGraph<TradeType>)
-        setIsReadyToSwap(true)
-        setBridgingState('waiting_for_swap_trigger')
-        console.log('Set state to trigger swap execution.')
-      } else if (!order.trade) {
-        console.error('Refreshed order has no valid trade.')
-        setErrorMessage(t('Could not find a valid route after refresh.'))
-        setBridgingState('error')
-      } else {
-        console.error('Refreshed order is not a classic order, cannot proceed with swap.', order)
-        setErrorMessage(t('Unsupported order type received after refresh.'))
-        setBridgingState('error')
-      }
-      setIsWaitingForRefresh(false)
+
+    try {
+      console.log('Executing second bridge...')
+      setBridgingState('bridging_out')
+      setTxHash(null)
+
+      const amountToBridge = order?.trade?.outputAmount?.toExact() ?? '0'
+
+      const bridgeResult = await ca
+        .bridge()
+        .token(outputCurrency.symbol)
+        .amount(amountToBridge)
+        .chain(outputChainInUI.id)
+        .exec()
+
+      console.log('Second bridge completed:', bridgeResult)
+
+      const finalMinAmountDecimal = new Decimal(amountToBridge).mul(0.998)
+      await waitForBalanceUpdate(ca, outputCurrency.symbol, outputChainInUI.id, finalMinAmountDecimal)
+
+      console.log('Second bridge process successful')
+      setBridgingState('success')
+    } catch (error: any) {
+      console.error('Failed to execute second bridge:', error)
+      setErrorMessage(error?.message ?? 'Failed to execute second bridge')
+      setBridgingState('error')
     }
-  }, [order, isWaitingForRefresh, setTradeForExecution, setIsReadyToSwap, setBridgingState, setErrorMessage, t])
+  }, [ca, outputCurrency, outputChainInUI, order, setBridgingState])
 
   useEffect(() => {
-    const executeSwapAndSecondBridge = async () => {
-      if (
-        !isReadyToSwap ||
-        !tradeForExecution ||
-        !swapCallback ||
-        !ca ||
-        !inputChainInUI ||
-        !outputChainInUI ||
-        !outputCurrency
-      ) {
-        if (isReadyToSwap && swapCallbackError) {
-          console.error('Swap callback preparation error (useEffect):', swapCallbackError)
-          setErrorMessage(swapCallbackError ?? t('Swap preparation failed.'))
-          setBridgingState('error')
-          setIsReadyToSwap(false)
-          setTradeForExecution(null)
-        }
-        return
-      }
-
-      const outputTokenSymbol = outputCurrency.symbol
-      const slippageAdjustedAmountOut = new Fraction(ONE)
-        .add(allowedSlippage)
-        .invert()
-        .multiply(tradeForExecution.outputAmount.quotient).quotient
-      const expectedMinimumOutputAmount = CurrencyAmount.fromRawAmount(
-        tradeForExecution.outputAmount.currency,
-        slippageAdjustedAmountOut,
-      )
-      const expectedMinimumOutputAmountDecimal = new Decimal(expectedMinimumOutputAmount.toExact())
-
-      try {
-        console.log(
-          `Executing PancakeSwap V3 Swap via useEffect: ${tradeForExecution.inputAmount.currency.symbol} for ${tradeForExecution.outputAmount.currency.symbol}`,
-        )
-        setBridgingState('swapping')
-        setTxHash(null)
-        const swapResult = await swapCallback()
-
-        if (!swapResult?.hash) throw new Error('Swap transaction failed to return a hash.')
-        const swapTxHash = swapResult.hash
-        setTxHash(swapTxHash)
-        console.log('PancakeSwap V3 Swap Submitted. Tx Hash:', swapTxHash)
-
-        console.log(`Waiting for swap transaction confirmation: ${swapTxHash}`)
-        const swapReceipt = await retryWaitForTransaction({ hash: swapTxHash, chainId: inputChainInUI.id })
-        if (!swapReceipt || swapReceipt.status !== 'success')
-          throw new Error(`Swap transaction failed or reverted. Hash: ${swapTxHash}`)
-        console.log('PancakeSwap V3 Swap Confirmed.')
-
-        console.log(`Fetching balance of ${outputTokenSymbol} on chain ${inputChainInUI.id} after swap...`)
-        const swappedBalanceInfo = await getBalanceOnChain(ca, outputTokenSymbol, inputChainInUI.id)
-
-        if (!swappedBalanceInfo || swappedBalanceInfo.balance.lt(expectedMinimumOutputAmountDecimal)) {
-          console.warn(
-            `Received ${outputTokenSymbol} balance (${
-              swappedBalanceInfo?.balanceStr ?? '0'
-            }) is less than minimum expected (${expectedMinimumOutputAmountDecimal.toString()}) or zero.`,
-          )
-          if (!swappedBalanceInfo || swappedBalanceInfo.balance.isZero())
-            throw new Error(`Failed to receive any ${outputTokenSymbol} after swap.`)
-        }
-        console.log(`Balance of ${outputTokenSymbol} on chain ${inputChainInUI.id}: ${swappedBalanceInfo.balanceStr}`)
-        const amountToBridge = swappedBalanceInfo.balanceStr
-
-        console.log(
-          `Executing Arcana Bridge 2: ${amountToBridge} ${outputTokenSymbol} from ${inputChainInUI.id} to ${outputChainInUI.id}`,
-        )
-        setBridgingState('bridging_out')
-        setTxHash(null)
-        const bridgeResult2 = await ca
-          .bridge()
-          .token(outputTokenSymbol)
-          .amount(amountToBridge)
-          .chain(outputChainInUI.id)
-          .exec()
-        console.log('Arcana Bridge 2 exec() completed:', bridgeResult2)
-
-        console.log(`Waiting for final balance of ${outputTokenSymbol} on chain ${outputChainInUI.id}...`)
-        await waitForBalanceUpdate(ca, outputTokenSymbol, outputChainInUI.id, new Decimal(amountToBridge).mul(0.98))
-
-        console.log('Arcana bridge-swap-bridge process successful.')
-        setBridgingState('success')
-      } catch (error: any) {
-        console.error('Arcana operation failed during swap or second bridge:', error)
-        const rejectionMessage = t('Transaction rejected')
-        const isUserRejection =
-          error?.message?.includes('rejected') ||
-          error?.message?.includes('denied') ||
-          error?.code === 4001 ||
-          error?.code === 'ACTION_REJECTED'
-        setErrorMessage(
-          isUserRejection
-            ? rejectionMessage
-            : error?.shortMessage ?? error?.message ?? t('An unknown error occurred during swap or final bridge.'),
-        )
-        setBridgingState('error')
-      } finally {
-        setIsReadyToSwap(false)
-        setTradeForExecution(null)
-      }
+    if (bridgingState === 'bridging_out') {
+      executeSecondBridge()
     }
-
-    executeSwapAndSecondBridge()
-  }, [
-    isReadyToSwap,
-    tradeForExecution,
-    swapCallback,
-    swapCallbackError,
-    ca,
-    inputChainInUI,
-    outputChainInUI,
-    outputCurrency,
-    allowedSlippage,
-    setBridgingState,
-    setErrorMessage,
-    setTxHash,
-    t,
-  ])
+  }, [bridgingState, executeSecondBridge])
 
   const handleConfirmAndExecute = useCallback(async () => {
     if (
       !ca ||
       !address ||
-      !initialInputAmount ||
+      !initialInputCurrencyAmount ||
+      initialInputCurrencyAmount.equalTo(0) ||
       !inputCurrency?.symbol ||
       !sourceChain ||
       !inputChainInUI ||
       !outputChainInUI ||
-      !initialOutputAmount ||
-      !outputCurrency ||
-      !isClassicOrder(order)
+      !outputCurrency
     ) {
-      console.error('Missing required data before starting flow')
+      console.error('Missing required data before starting flow', {
+        ca: !!ca,
+        address: !!address,
+        initialInputAmount: initialInputCurrencyAmount?.toExact(),
+        inputCurrency: !!inputCurrency,
+        sourceChain: !!sourceChain,
+        inputChainInUI: !!inputChainInUI,
+        outputChainInUI: !!outputChainInUI,
+        outputCurrency: !!outputCurrency,
+      })
       setErrorMessage(t('Missing required data. Please ensure amount, chains are selected and wallet is connected.'))
-      setBridgingState('error')
+      setBridgingState('idle')
       return
     }
     setErrorMessage(null)
-    setBridgingState('pending')
-    await executeBridgeAndTriggerRefresh()
+    await executeBridgeAndInitiateSwapInputUpdate()
   }, [
     ca,
     address,
-    initialInputAmount,
+    initialInputCurrencyAmount,
     inputCurrency,
     sourceChain,
     inputChainInUI,
     outputChainInUI,
-    initialOutputAmount,
     outputCurrency,
-    order,
     t,
-    executeBridgeAndTriggerRefresh,
+    executeBridgeAndInitiateSwapInputUpdate,
     setBridgingState,
     setErrorMessage,
   ])
 
   const hasEnoughBalance = useMemo(() => {
-    if (balanceLoading || !inputCurrency?.symbol || !initialInputAmount) return false
+    if (balanceLoading || !inputCurrency?.symbol || !initialInputCurrencyAmount) return false
     const balanceInfo = getTotalAssetBalance(inputCurrency.symbol)
-    const totalBalance = balanceInfo?.balance
-    if (!totalBalance) return false
+    const totalBalanceStr = balanceInfo?.balance
+    if (!totalBalanceStr) return false
     try {
-      return new Decimal(totalBalance).gte(new Decimal(initialInputAmount.toExact()))
+      return new Decimal(totalBalanceStr).gte(new Decimal(initialInputCurrencyAmount.toExact()))
     } catch (e) {
       console.error('Error comparing balances:', e)
       return false
     }
-  }, [balanceLoading, getTotalAssetBalance, inputCurrency?.symbol, initialInputAmount])
+  }, [balanceLoading, getTotalAssetBalance, inputCurrency?.symbol, initialInputCurrencyAmount])
 
   const handleDismissModal = useCallback(() => {
     const interruptibleStates: ExtendedBridgingState[] = ['idle', 'success', 'error']
@@ -424,7 +304,6 @@ const ArcanaSwapButton: React.FC<ArcanaSwapButtonPropsType & CommitButtonProps> 
       setTxHash(null)
       setTradeForExecution(null)
       setIsReadyToSwap(false)
-      setIsWaitingForRefresh(false)
     } else {
       console.log('Dismissal prevented during active operation:', executionBridgingState)
     }
@@ -434,7 +313,7 @@ const ArcanaSwapButton: React.FC<ArcanaSwapButtonPropsType & CommitButtonProps> 
     <ArcanaConfirmBridgeModal
       onConfirm={handleConfirmAndExecute}
       onDismiss={handleDismissModal}
-      inputAmount={initialInputAmount}
+      inputAmount={initialInputCurrencyAmount}
       outputAmount={initialOutputAmount}
       inputCurrency={inputCurrency}
       outputCurrency={outputCurrency}
@@ -458,15 +337,13 @@ const ArcanaSwapButton: React.FC<ArcanaSwapButtonPropsType & CommitButtonProps> 
     setTxHash(null)
     setTradeForExecution(null)
     setIsReadyToSwap(false)
-    setIsWaitingForRefresh(false)
     onPresentConfirmModal()
   }, [onPresentConfirmModal, setBridgingState, setErrorMessage, setTxHash])
 
   const buttonText = useMemo(() => {
     if (!ca) return t('Initializing Arcana...')
-    if (balanceLoading) return t('Loading Balance...')
-    if (!initialInputAmount || initialInputAmount.equalTo(0)) return t('Enter an amount')
-    if (!isClassicOrder(order)) return t('X Orders not supported yet')
+    if (balanceLoading && !unifiedBalances) return t('Loading Balance...')
+    if (!initialInputCurrencyAmount || initialInputCurrencyAmount.equalTo(0)) return t('Enter an amount')
 
     if (!hasEnoughBalance) return t('Insufficient %symbol% Balance', { symbol: inputCurrency?.symbol ?? '...' })
 
@@ -475,10 +352,14 @@ const ArcanaSwapButton: React.FC<ArcanaSwapButtonPropsType & CommitButtonProps> 
         return t('Starting...')
       case 'bridging_in':
         return t('Bridging funds...')
+      case 'waiting_for_balance_update':
+        return t('Confirming bridge...')
+      case 'updating_swap_input':
+        return t('Preparing swap...')
       case 'fetching_quote':
         return t('Fetching latest price...')
       case 'waiting_for_swap_trigger':
-        return t('Preparing swap...')
+        return t('Ready for Swap...')
       case 'swapping':
         return t('Executing swap...')
       case 'bridging_out':
@@ -491,7 +372,7 @@ const ArcanaSwapButton: React.FC<ArcanaSwapButtonPropsType & CommitButtonProps> 
         if (allowanceModal || intentModal) return t('Processing...')
     }
 
-    if (swapCallbackError && tradeForExecution && executionBridgingState !== 'error') {
+    if (swapCallbackError && (executionBridgingState as ExtendedBridgingState) === 'waiting_for_swap_trigger') {
       return t('Swap route error')
     }
 
@@ -505,8 +386,7 @@ const ArcanaSwapButton: React.FC<ArcanaSwapButtonPropsType & CommitButtonProps> 
   }, [
     ca,
     balanceLoading,
-    initialInputAmount,
-    order,
+    initialInputCurrencyAmount,
     hasEnoughBalance,
     inputCurrency,
     outputCurrency,
@@ -516,54 +396,42 @@ const ArcanaSwapButton: React.FC<ArcanaSwapButtonPropsType & CommitButtonProps> 
     t,
     outputChainInUI,
     swapCallbackError,
-    tradeForExecution,
   ])
 
   const isDisabled = useMemo(() => {
-    const isProcessing = [
-      'pending',
-      'bridging_in',
-      'fetching_quote',
-      'waiting_for_swap_trigger',
-      'swapping',
-      'bridging_out',
-    ].includes(executionBridgingState)
+    const isProcessing = !['idle', 'success', 'error', 'waiting_for_swap_trigger'].includes(executionBridgingState)
 
-    const swapPrepFailed = executionBridgingState !== 'error' && !!swapCallbackError && !!tradeForExecution
+    const missingCoreData =
+      !ca ||
+      !initialInputCurrencyAmount ||
+      initialInputCurrencyAmount.equalTo(0) ||
+      !inputCurrency ||
+      !outputCurrency ||
+      !inputChainInUI ||
+      !outputChainInUI ||
+      !sourceChain
 
-    return Boolean(
-      isProcessing ||
-        swapPrepFailed ||
-        allowanceModal ||
-        intentModal ||
-        !ca ||
-        balanceLoading ||
-        !initialInputAmount ||
-        initialInputAmount.equalTo(0) ||
-        !hasEnoughBalance ||
-        !inputCurrency ||
-        !outputCurrency ||
-        !inputChainInUI ||
-        !outputChainInUI ||
-        !sourceChain ||
-        !isClassicOrder(order),
-    )
+    const balanceIssue = balanceLoading || !hasEnoughBalance
+
+    const arcanaModalActive = !!(allowanceModal || intentModal)
+
+    const swapPrepFailed = executionBridgingState === 'waiting_for_swap_trigger' && !!swapCallbackError
+
+    return Boolean(isProcessing || missingCoreData || balanceIssue || arcanaModalActive || swapPrepFailed)
   }, [
     executionBridgingState,
     allowanceModal,
     intentModal,
     ca,
     balanceLoading,
-    initialInputAmount,
+    initialInputCurrencyAmount,
     hasEnoughBalance,
     inputCurrency,
     outputCurrency,
     inputChainInUI,
     outputChainInUI,
     sourceChain,
-    order,
     swapCallbackError,
-    tradeForExecution,
   ])
 
   return (
@@ -576,7 +444,7 @@ const ArcanaSwapButton: React.FC<ArcanaSwapButtonPropsType & CommitButtonProps> 
         disabled={isDisabled}
         onClick={handleButtonClick}
       >
-        {(balanceLoading || !ca) && executionBridgingState === 'idle' ? <Loading /> : buttonText}
+        {(balanceLoading && !unifiedBalances) || !ca ? <Loading /> : buttonText}
       </CommitButton>
       {errorMessage && executionBridgingState === 'error' && (
         <Text color="failure" mt="8px" fontSize="14px" textAlign="center">

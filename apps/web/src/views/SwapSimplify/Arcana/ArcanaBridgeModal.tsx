@@ -103,7 +103,7 @@ const ArcanaAllowanceContent = ({ allowanceModal }: { allowanceModal: any }) => 
   )
 }
 
-const ArcanaIntentContent = ({ intentModal }: { intentModal: any }) => {
+export const ArcanaIntentContent = ({ intentModal }: { intentModal: any }) => {
   const { t } = useTranslation()
   const [isRefreshing, setIsRefreshing] = useState(false)
   const { toastSuccess, toastError } = useToast()
@@ -163,7 +163,7 @@ const ArcanaIntentContent = ({ intentModal }: { intentModal: any }) => {
           {t('Details:')}
         </Text>
         {intentData?.sources?.map((source: any, index: number) => (
-          <Text key={source?.amount} fontSize="12px">
+          <Text key={source?.amount} fontSize="14px">
             -{' '}
             {t('Use %amount% on %chainName%', {
               amount: source.amount,
@@ -171,10 +171,10 @@ const ArcanaIntentContent = ({ intentModal }: { intentModal: any }) => {
             })}
           </Text>
         ))}
-        <Text fontSize="12px" mt="4px">
+        <Text fontSize="14px" mt="4px">
           - {t('Total Gas: %gas% ', { gas: intentData.fees.caGas })}
         </Text>
-        <Text fontSize="12px" mt="4px">
+        <Text fontSize="14px" mt="4px">
           - {t('Total Fee: %amount%', { amount: intentData.fees.total })}
         </Text>
       </Box>
@@ -359,7 +359,17 @@ export const ArcanaConfirmBridgeModal: React.FC<ArcanaConfirmBridgeModalProps> =
     }
 
     if (
-      ['pending', 'bridging_in', 'swapping', 'bridging_out'].includes(currentModalState) &&
+      [
+        'pending',
+        'bridging_in',
+        'swapping',
+        'bridging_out',
+        'fetching_quote',
+        'updating_swap_input',
+        'updating_swap_output',
+        'waiting_for_second_bridge',
+        'second_bridge_pending',
+      ].includes(currentModalState) &&
       inputCurrency &&
       outputCurrency
     ) {

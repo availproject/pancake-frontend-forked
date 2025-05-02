@@ -36,7 +36,7 @@ const UserMenuItems = () => {
   const { hasPendingTransactions } = usePendingTransactions()
   const { isInitialized, isLoading, profile } = useProfile()
   const { shouldShowModal } = useAirdropModalStatus()
-  const { ca, initArcana } = useArcana()
+
   const [onPresentWalletModal] = useModal(<WalletModal initialView={WalletView.WALLET_INFO} />)
   const [onPresentTransactionModal] = useModal(<WalletModal initialView={WalletView.TRANSACTIONS} />)
   const [onPresentWrongNetworkModal] = useModal(<WalletModal initialView={WalletView.WRONG_NETWORK} />)
@@ -49,13 +49,6 @@ const UserMenuItems = () => {
       onPresentWalletModal()
     }
   }, [isWrongNetwork, onPresentWalletModal, onPresentWrongNetworkModal])
-
-  useEffect(() => {
-    initArcana()
-    if (!ca) {
-      initArcana()
-    }
-  }, [ca, initArcana])
 
   return (
     <>
@@ -95,6 +88,7 @@ const UserMenu = () => {
   const avatarSrc = profile?.nft?.image?.thumbnail ?? avatar
   const [userMenuText, setUserMenuText] = useState<string>('')
   const [userMenuVariable, setUserMenuVariable] = useState<UserMenuVariant>('default')
+  const { ca, initArcana } = useArcana()
 
   useEffect(() => {
     if (hasPendingTransactions) {
@@ -105,6 +99,12 @@ const UserMenu = () => {
       setUserMenuVariable('default')
     }
   }, [hasPendingTransactions, pendingNumber, t])
+
+  useEffect(() => {
+    if (!ca && account) {
+      initArcana()
+    }
+  }, [ca, account])
 
   if (account) {
     return (

@@ -3,23 +3,31 @@ import { useTranslation } from '@pancakeswap/localization'
 import { getPermit2Address } from '@pancakeswap/permit2-sdk'
 import { PriceOrder } from '@pancakeswap/price-api-sdk'
 import { Currency, CurrencyAmount, Percent, Token } from '@pancakeswap/swap-sdk-core'
+import { useToast } from '@pancakeswap/uikit'
 import { Permit2Signature } from '@pancakeswap/universal-router-sdk'
 import { ConfirmModalState, useAsyncConfirmPriceImpactWithoutFee } from '@pancakeswap/widgets-internal'
+import { ToastDescriptionWithTx } from 'components/Toast'
+import { BLOCK_CONFIRMATION } from 'config/confirmation'
 import { ALLOWED_PRICE_IMPACT_HIGH, PRICE_IMPACT_WITHOUT_FEE_CONFIRM_MIN } from 'config/constants/exchange'
+import { useArcana } from 'contexts/ArcanaProvider'
 import useAccountActiveChain from 'hooks/useAccountActiveChain'
 import { useActiveChainId } from 'hooks/useActiveChainId'
-import { useNativeWrap } from 'hooks/useNativeWrap'
 import useNativeCurrency from 'hooks/useNativeCurrency'
+import { useNativeWrap } from 'hooks/useNativeWrap'
 import { usePermit2 } from 'hooks/usePermit2'
 import { usePermit2Requires } from 'hooks/usePermit2Requires'
 import { useSafeTxHashTransformer } from 'hooks/useSafeTxHashTransformer'
 import { useTransactionDeadline } from 'hooks/useTransactionDeadline'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { RetryableError, retry } from 'state/multicall/retry'
+import { Field } from 'state/swap/actions'
+import { useSwapState } from 'state/swap/hooks'
+import { useSwapActionHandlers } from 'state/swap/useSwapActionHandlers'
+import { useCurrencyBalance } from 'state/wallet/hooks'
 import { logGTMSwapTxSentEvent } from 'utils/customGTMEventTracking'
 import { UserUnexpectedTxError } from 'utils/errors'
-import { publicClient } from 'utils/wagmi'
 import { logSwap } from 'utils/log'
+import { publicClient } from 'utils/wagmi'
 import {
   Address,
   Hex,
@@ -28,14 +36,10 @@ import {
   TransactionReceiptNotFoundError,
   erc20Abi,
 } from 'viem'
-import { useToast } from '@pancakeswap/uikit'
-import { ToastDescriptionWithTx } from 'components/Toast'
 import { isClassicOrder, isXOrder } from 'views/Swap/utils'
 import { waitForXOrderReceipt } from 'views/Swap/x/api'
 import { useSendXOrder } from 'views/Swap/x/useSendXOrder'
-import { useCurrencyBalance } from 'state/wallet/hooks'
-import { BLOCK_CONFIRMATION } from 'config/confirmation'
-
+import useArcanaBridge from 'views/SwapSimplify/hooks/useBridgeAndSwapFlow'
 import { computeTradePriceBreakdown } from '../utils/exchange'
 import { userRejectedError } from './useSendSwapTransaction'
 import { useSwapCallback } from './useSwapCallback'
@@ -77,6 +81,11 @@ const useCreateConfirmSteps = (
 
   return useCallback(() => {
     const steps: ConfirmModalState[] = []
+
+    // Add bridging steps
+    steps.push(ConfirmModalState.BRIDGING_IN)
+
+    // Existing steps
     if (
       isXOrder(order) &&
       order.trade.inputAmount.currency.isNative &&
@@ -95,6 +104,10 @@ const useCreateConfirmSteps = (
       steps.push(ConfirmModalState.PERMITTING)
     }
     steps.push(ConfirmModalState.PENDING_CONFIRMATION)
+
+    // Add final bridging steps
+    steps.push(ConfirmModalState.BRIDGING_OUT)
+
     return steps
   }, [requireRevoke, requireApprove, requirePermit, order, balance, amountToApprove])
 }
@@ -107,18 +120,25 @@ const useConfirmActions = (
 ) => {
   const { t } = useTranslation()
   const { chainId } = useActiveChainId()
+  const { ca } = useArcana()
   const [deadline] = useTransactionDeadline()
   const safeTxHashTransformer = useSafeTxHashTransformer()
   const { revoke, permit, approve } = usePermit2(amountToApprove, spender, {
     enablePaymaster: true,
   })
+  const {
+    [Field.INPUT]: { chainId: inputCurrencyChainId },
+    [Field.OUTPUT]: { chainId: outputCurrencyChainId },
+  } = useSwapState()
   const nativeWrap = useNativeWrap()
   const { account } = useAccountActiveChain()
   const getAllowanceArgs = useMemo(() => {
-    if (!chainId) return undefined
-    const inputs = [account, getPermit2Address(chainId)] as [`0x${string}`, `0x${string}`]
+    const actualChainId = chainId ?? inputCurrencyChainId ?? outputCurrencyChainId
+    if (!actualChainId) return undefined
+    const inputs = [account, getPermit2Address(actualChainId)] as [`0x${string}`, `0x${string}`]
+    console.log('getAllowanceArgs', { chainId, address: amountToApprove?.currency.address, inputs })
     return {
-      chainId,
+      chainId: actualChainId,
       address: amountToApprove?.currency.address as Address,
       inputs,
     }
@@ -140,6 +160,8 @@ const useConfirmActions = (
   const [orderHash, setOrderHash] = useState<Hex | undefined>(undefined)
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined)
   const { toastSuccess, toastError } = useToast()
+  const { onUserInput } = useSwapActionHandlers()
+  const { arcanaBridge } = useArcanaBridge()
 
   const resetState = useCallback(() => {
     setConfirmState(ConfirmModalState.REVIEWING)
@@ -312,6 +334,7 @@ const useConfirmActions = (
       action: async (nextState?: ConfirmModalState) => {
         setTxHash(undefined)
         setConfirmState(ConfirmModalState.APPROVING_TOKEN)
+        console.log('approveStep', { chainId, address: amountToApprove?.currency.address })
         try {
           const result = await approve()
           if (result?.hash && chainId) {
@@ -496,6 +519,77 @@ const useConfirmActions = (
     }
   }, [account, t, order, resetState, sendXOrder, showError, nativeCurrency, toastSuccess, toastError])
 
+  const bridgeInStep = useMemo(() => {
+    return {
+      step: ConfirmModalState.BRIDGING_IN,
+      action: async (nextState?: ConfirmModalState) => {
+        setConfirmState(ConfirmModalState.BRIDGING_IN)
+        try {
+          if (!ca) throw new Error('Arcana client not initialized')
+          const inputTokenSymbol = order?.trade?.inputAmount?.currency?.symbol ?? ''
+
+          await arcanaBridge({
+            tokenSymbol: inputTokenSymbol,
+            amount: order?.trade?.inputAmount?.toExact() ?? '',
+            targetChainId: inputCurrencyChainId ?? 0,
+            callback: (updatedAmount) => {
+              console.log('Bridge in completed with amount:', updatedAmount)
+              onUserInput(Field.INPUT, updatedAmount)
+            },
+          })
+
+          if (nextState) {
+            setConfirmState(nextState)
+          }
+        } catch (error) {
+          console.error('bridge in error', error)
+          if (userRejectedError(error)) {
+            showError(t('Transaction rejected'))
+          } else {
+            showError(typeof error === 'string' ? error : (error as any)?.message)
+          }
+        }
+      },
+      showIndicator: true,
+    }
+  }, [ca, order?.trade?.inputAmount, setConfirmState, showError, t])
+
+  const bridgeOutStep = useMemo(() => {
+    return {
+      step: ConfirmModalState.BRIDGING_OUT,
+      action: async (nextState?: ConfirmModalState) => {
+        setConfirmState(ConfirmModalState.BRIDGING_OUT)
+        try {
+          if (!ca) throw new Error('Arcana client not initialized')
+
+          await arcanaBridge({
+            tokenSymbol: order?.trade?.outputAmount?.currency?.symbol ?? '',
+            amount: order?.trade?.outputAmount?.toExact() ?? '',
+            targetChainId: outputCurrencyChainId ?? 0,
+            callback: (updatedAmount) => {
+              console.log('Bridge out completed with amount:', updatedAmount)
+            },
+          })
+
+          // Wait for intent confirmation
+          setConfirmState(ConfirmModalState.INTENT_CONFIRMATION)
+
+          if (nextState) {
+            setConfirmState(nextState)
+          }
+        } catch (error) {
+          console.error('bridge out error', error)
+          if (userRejectedError(error)) {
+            showError(t('Transaction rejected'))
+          } else {
+            showError(typeof error === 'string' ? error : (error as any)?.message)
+          }
+        }
+      },
+      showIndicator: true,
+    }
+  }, [ca, order?.trade?.outputAmount, setConfirmState, showError, t])
+
   const actions = useMemo(() => {
     return {
       [ConfirmModalState.WRAPPING]: wrapStep,
@@ -503,14 +597,15 @@ const useConfirmActions = (
       [ConfirmModalState.PERMITTING]: permitStep,
       [ConfirmModalState.APPROVING_TOKEN]: approveStep,
       [ConfirmModalState.PENDING_CONFIRMATION]: isClassicOrder(order) ? swapStep : xSwapStep,
+      [ConfirmModalState.BRIDGING_IN]: bridgeInStep,
+      [ConfirmModalState.BRIDGING_OUT]: bridgeOutStep,
     } as { [k in ConfirmModalState]: ConfirmAction }
-  }, [revokeStep, permitStep, approveStep, order, swapStep, xSwapStep, wrapStep])
+  }, [revokeStep, permitStep, approveStep, order, swapStep, xSwapStep, wrapStep, bridgeInStep, bridgeOutStep])
 
   return {
     txHash,
     orderHash,
     actions,
-
     confirmState,
     resetState,
     errorMessage,

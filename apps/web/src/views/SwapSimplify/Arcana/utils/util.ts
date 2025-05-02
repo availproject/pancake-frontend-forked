@@ -55,3 +55,51 @@ export async function getBalanceOnChain(
     return null
   }
 }
+
+export async function waitForBalanceUpdate(
+  ca: CA,
+  tokenSymbol: string,
+  targetChainId: number,
+  expectedMinimumAmount: Decimal,
+  timeoutMs: number = 120000,
+  pollIntervalMs: number = 5000,
+): Promise<{ balance: Decimal; balanceStr: string } | null> {
+  const startTime = Date.now()
+  console.log(
+    `Polling for balance update: ${tokenSymbol} on chain ${targetChainId}. Expecting >= ${expectedMinimumAmount.toString()}`,
+  )
+
+  const initialBalanceInfo = await getBalanceOnChain(ca, tokenSymbol, targetChainId)
+  if (initialBalanceInfo && initialBalanceInfo.balance.gte(expectedMinimumAmount)) {
+    console.log(`Balance confirmed immediately for ${tokenSymbol}: ${initialBalanceInfo.balanceStr}`)
+    return initialBalanceInfo
+  }
+  console.log(`Initial balance: ${initialBalanceInfo?.balanceStr ?? 'N/A'}`)
+
+  return new Promise((resolve) => {
+    const checkBalance = async () => {
+      const currentBalanceInfo = await getBalanceOnChain(ca, tokenSymbol, targetChainId)
+
+      if (currentBalanceInfo && currentBalanceInfo.balance.gte(expectedMinimumAmount)) {
+        console.log(`Balance confirmed for ${tokenSymbol} on chain ${targetChainId}: ${currentBalanceInfo.balanceStr}`)
+        resolve(currentBalanceInfo)
+        return
+      }
+
+      console.log(
+        `Polling balance for ${tokenSymbol} on chain ${targetChainId}... Current: ${
+          currentBalanceInfo?.balanceStr ?? 'N/A'
+        }`,
+      )
+
+      if (Date.now() - startTime < timeoutMs) {
+        setTimeout(checkBalance, pollIntervalMs)
+      } else {
+        console.error(`Timeout waiting for balance update for ${tokenSymbol} on chain ${targetChainId}`)
+        resolve(null)
+      }
+    }
+
+    checkBalance()
+  })
+}

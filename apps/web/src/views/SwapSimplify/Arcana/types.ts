@@ -1,7 +1,7 @@
 import { PriceOrder } from '@pancakeswap/price-api-sdk'
 import { Currency, CurrencyAmount } from '@pancakeswap/sdk'
 import { InjectedModalProps } from '@pancakeswap/uikit'
-import { useArcana } from 'contexts/ArcanaProvider'
+import { ArcanaBridgingState } from 'contexts/ArcanaProvider'
 import { Chain } from 'wagmi/chains'
 
 export interface ArcanaConfirmBridgeModalProps extends InjectedModalProps {
@@ -25,7 +25,4 @@ export interface ArcanaSwapButtonPropsType {
   refreshOrder?: () => void
 }
 
-export type ExtendedBridgingState =
-  | ReturnType<typeof useArcana>['bridgingState']
-  | 'fetching_quote'
-  | 'waiting_for_swap_trigger'
+export type ExtendedBridgingState = ArcanaBridgingState
