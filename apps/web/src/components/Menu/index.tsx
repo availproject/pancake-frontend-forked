@@ -1,35 +1,26 @@
 import { languageList, useTranslation } from '@pancakeswap/localization'
 import { Menu as UikitMenu, footerLinks, useModal } from '@pancakeswap/uikit'
-import { BIG_ZERO } from '@pancakeswap/utils/bigNumber'
 import { NextLinkFromReactRouter } from '@pancakeswap/widgets-internal'
 import USCitizenConfirmModal from 'components/Modal/USCitizenConfirmModal'
 import { NetworkSwitcher } from 'components/NetworkSwitcher'
 import { useActiveChainId } from 'hooks/useActiveChainId'
-import { useCakePrice } from 'hooks/useCakePrice'
 import { usePerpUrl } from 'hooks/usePerpUrl'
 import useTheme from 'hooks/useTheme'
 import { IdType, useUserNotUsCitizenAcknowledgement } from 'hooks/useUserIsUsCitizenAcknowledgement'
-import { useWebNotifications } from 'hooks/useWebNotifications'
 import { useRouter } from 'next/router'
-import { Suspense, lazy, useCallback, useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { styled } from 'styled-components'
-import GlobalSettings from './GlobalSettings'
-import { SettingsMode } from './GlobalSettings/types'
 import UserMenu from './UserMenu'
 import { UseMenuItemsParams, useMenuItems } from './hooks/useMenuItems'
 import { getActiveMenuItem, getActiveSubMenuChildItem, getActiveSubMenuItem } from './utils'
-
-const Notifications = lazy(() => import('views/Notifications'))
 
 const LinkComponent = (linkProps) => {
   return <NextLinkFromReactRouter to={linkProps.href} {...linkProps} prefetch={false} />
 }
 
 const Menu = (props) => {
-  const { enabled } = useWebNotifications()
   const { chainId } = useActiveChainId()
   const { isDark, setTheme } = useTheme()
-  const cakePrice = useCakePrice()
   const { currentLanguage, setLanguage, t } = useTranslation()
   const { pathname } = useRouter()
   const perpUrl = usePerpUrl({ chainId, isDark, languageCode: currentLanguage.code })
@@ -82,12 +73,6 @@ const Menu = (props) => {
       linkComponent={LinkComponent}
       rightSide={
         <>
-          <GlobalSettings mode={SettingsMode.GLOBAL} />
-          {enabled && (
-            <Suspense fallback={null}>
-              <Notifications />
-            </Suspense>
-          )}
           <NetworkSwitcher />
           <UserMenu />
         </>
@@ -99,7 +84,6 @@ const Menu = (props) => {
       currentLang={currentLanguage.code}
       langs={languageList}
       setLang={setLanguage}
-      cakePriceUsd={cakePrice.eq(BIG_ZERO) ? undefined : cakePrice}
       links={menuItems}
       subLinks={
         activeSubMenuItem?.overrideSubNavItems ??
@@ -112,8 +96,8 @@ const Menu = (props) => {
       activeItem={activeMenuItem?.href}
       activeSubItem={activeSubMenuItem?.href}
       activeSubItemChildItem={activeSubChildMenuItem?.href}
-      buyCakeLabel={t('Buy CAKE')}
-      buyCakeLink="/swap?outputCurrency=0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82&chainId=56"
+      showCakePrice={false}
+      showLangSelector={false}
       {...props}
     />
   )
@@ -126,16 +110,9 @@ const SharedComponentWithOutMenuWrapper = styled.div`
 `
 
 export const SharedComponentWithOutMenu: React.FC<React.PropsWithChildren> = ({ children }) => {
-  const { enabled } = useWebNotifications()
   return (
     <>
       <SharedComponentWithOutMenuWrapper>
-        <GlobalSettings mode={SettingsMode.GLOBAL} />
-        {enabled && (
-          <Suspense fallback={null}>
-            <Notifications />
-          </Suspense>
-        )}
         <NetworkSwitcher />
         <UserMenu />
       </SharedComponentWithOutMenuWrapper>

@@ -9,8 +9,9 @@ export const ChainLogo = memo(
     chainId,
     width = 24,
     height = 24,
+    style = {},
     ...props
-  }: { chainId?: number; width?: number; height?: number } & SpaceProps) => {
+  }: { chainId?: number; width?: number; height?: number; style?: React.CSSProperties } & SpaceProps) => {
     const icon = chainId ? (
       <Image
         alt={`chain-${chainId}`}
@@ -23,6 +24,10 @@ export const ChainLogo = memo(
     ) : (
       <HelpIcon width={width} height={height} />
     );
-    return <Box {...props}>{icon}</Box>;
+    return (
+      <Box {...props} style={style}>
+        {icon}
+      </Box>
+    );
   }
 );

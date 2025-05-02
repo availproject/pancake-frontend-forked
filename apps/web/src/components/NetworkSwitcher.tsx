@@ -13,32 +13,12 @@ import { chains as evmChains } from 'utils/wagmi'
 import { NetworkSwitcherModal, networkSwitcherModalAtom } from './NetworkSwitcherModal'
 
 const SHORT_SYMBOL = {
-  [ChainId.ETHEREUM]: 'ETH',
-  [ChainId.BSC]: 'BNB',
-  [ChainId.BSC_TESTNET]: 'tBNB',
-  [ChainId.GOERLI]: 'GOR',
-  [ChainId.ARBITRUM_ONE]: 'ARB',
-  [ChainId.ARBITRUM_GOERLI]: 'tARB',
-  [ChainId.POLYGON_ZKEVM]: 'Polygon zkEVM',
-  [ChainId.POLYGON_ZKEVM_TESTNET]: 'tZkEVM',
-  [ChainId.ZKSYNC]: 'zkSync',
-  [ChainId.ZKSYNC_TESTNET]: 'tZkSync',
   [ChainId.LINEA]: 'Linea',
-  [ChainId.LINEA_TESTNET]: 'tLinea',
-  [ChainId.OPBNB]: 'opBNB',
-  [ChainId.OPBNB_TESTNET]: 'tOpBNB',
-  [ChainId.BASE]: 'Base',
-  [ChainId.BASE_TESTNET]: 'tBase',
-  [ChainId.SCROLL_SEPOLIA]: 'tScroll',
-  [ChainId.SEPOLIA]: 'sepolia',
-  [ChainId.BASE_SEPOLIA]: 'Base Sepolia',
-  [ChainId.ARBITRUM_SEPOLIA]: 'Arb Sepolia',
-  [ChainId.MONAD_TESTNET]: 'tMonad',
-} as const satisfies Record<ChainId, string>
+} as const
 
 export const NetworkSwitcher = () => {
   const { t } = useTranslation()
-  const { chainId, isWrongNetwork, isNotMatched } = useActiveChainId()
+  const { chainId, isWrongNetwork } = useActiveChainId()
   const { isLoading, canSwitch } = useSwitchNetwork()
   const router = useRouter()
   const [, setIsNetworkSwitcherOpen] = useAtom(networkSwitcherModalAtom)

@@ -3,6 +3,7 @@ import { LanguageProvider } from '@pancakeswap/localization'
 import { DialogProvider, ModalProvider, UIKitProvider, dark, light } from '@pancakeswap/uikit'
 import { Store } from '@reduxjs/toolkit'
 import { HydrationBoundary, QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import ArcanaProvider from 'contexts/ArcanaProvider'
 import { HistoryManagerProvider } from 'contexts/HistoryContext'
 import { W3WConfigProvider } from 'contexts/W3WConfigContext'
 import { ThemeProvider as NextThemeProvider, useTheme as useNextTheme } from 'next-themes'
@@ -44,7 +45,9 @@ const Providers: React.FC<
                 <LanguageProvider>
                   <StyledUIKitProvider>
                     <HistoryManagerProvider>
-                      <ModalProvider portalProvider={DialogProvider}>{children}</ModalProvider>
+                      <ModalProvider portalProvider={DialogProvider}>
+                        <ArcanaProvider>{children}</ArcanaProvider>
+                      </ModalProvider>
                     </HistoryManagerProvider>
                   </StyledUIKitProvider>
                 </LanguageProvider>

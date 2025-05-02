@@ -1,5 +1,5 @@
 import { useTranslation } from '@pancakeswap/localization'
-import { ButtonMenu, ButtonMenuItem, Text, TooltipText, useMatchBreakpoints, useTooltip } from '@pancakeswap/uikit'
+import { ButtonMenu, ButtonMenuItem, Text, useMatchBreakpoints, useTooltip } from '@pancakeswap/uikit'
 import GlobalSettings from 'components/Menu/GlobalSettings'
 import { useActiveChainId } from 'hooks/useActiveChainId'
 import { useRouter } from 'next/router'
@@ -71,12 +71,6 @@ export const SwapSelection = ({
     (value: SwapType) => {
       let url = ''
       switch (value) {
-        case SwapType.LIMIT:
-          url = '/swap/limit'
-          break
-        case SwapType.TWAP:
-          url = '/swap/twap'
-          break
         case SwapType.MARKET:
           url = '/'
           break
@@ -131,39 +125,8 @@ export const SwapSelection = ({
         fullWidth
       >
         <StyledButtonMenuItem>{t('Swap')}</StyledButtonMenuItem>
-        {isMobile ? (
-          <StyledButtonMenuItemTooltip {...tSwapProps}>{t('TWAP')}</StyledButtonMenuItemTooltip>
-        ) : (
-          <StyledButtonMenuItemTooltip {...tSwapProps}>
-            <TooltipText ref={targetRef}>{t('TWAP')}</TooltipText>
-            {tooltipVisible && tooltip}
-          </StyledButtonMenuItemTooltip>
-        )}
-
-        <StyledButtonMenuItem {...tSwapProps}>{t('Limit')}</StyledButtonMenuItem>
+        <></>
       </ButtonMenu>
-      {/* NOTE: Commented out until charts are supported again */}
-      {/* {isChartSupported && withToolkit && (
-        <ColoredIconButton
-          onClick={() => {
-            if (!isChartDisplayed && isSwapHotTokenDisplay) {
-              setIsSwapHotTokenDisplay(false)
-            }
-            toggleChartDisplayed()
-          }}
-          variant="text"
-          scale="sm"
-          data-dd-action-name="Price chart button"
-          width="24px"
-          p="0"
-        >
-          {isChartDisplayed ? (
-            <ChartDisableIcon width="24px" color="textSubtle" />
-          ) : (
-            <ChartIcon width="24px" color="textSubtle" />
-          )}
-        </ColoredIconButton>
-      )} */}
       {withToolkit && (
         <GlobalSettings
           color="textSubtle"

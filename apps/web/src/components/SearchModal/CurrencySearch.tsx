@@ -1,7 +1,7 @@
 import { useDebounce, useSortedTokensByQuery } from '@pancakeswap/hooks'
 import { useTranslation } from '@pancakeswap/localization'
 /* eslint-disable no-restricted-syntax */
-import { Currency, Token } from '@pancakeswap/sdk'
+import { ChainId, Currency, Token } from '@pancakeswap/sdk'
 import { WrappedTokenInfo, createFilterToken } from '@pancakeswap/token-lists'
 import { AutoColumn, Box, Column, Input, Text, useMatchBreakpoints } from '@pancakeswap/uikit'
 import { useAudioPlay } from '@pancakeswap/utils/user'
@@ -24,7 +24,8 @@ import { getSwapSound } from './swapSound'
 
 interface CurrencySearchProps {
   selectedCurrency?: Currency | null
-  onCurrencySelect: (currency: Currency) => void
+  selectedChainId?: ChainId | null
+  onCurrencySelect: (currency: Currency, chainId?: ChainId) => void
   otherSelectedCurrency?: Currency | null
   showSearchInput?: boolean
   showCommonBases?: boolean
@@ -89,7 +90,8 @@ function CurrencySearch({
   setImportToken,
   height,
   tokensToShow,
-}: CurrencySearchProps) {
+  selectedChainId,
+}: Readonly<CurrencySearchProps>) {
   const { t } = useTranslation()
   const { chainId } = useActiveChainId()
 
@@ -132,8 +134,8 @@ function CurrencySearch({
   )
 
   const handleCurrencySelect = useCallback(
-    (currency: Currency) => {
-      onCurrencySelect(currency)
+    (currency: Currency, newChainId?: ChainId) => {
+      onCurrencySelect(currency, newChainId)
       if (audioPlay) {
         getSwapSound().play()
       }
@@ -237,33 +239,31 @@ function CurrencySearch({
   ])
 
   return (
-    <>
-      <AutoColumn gap="16px">
-        {showSearchInput && (
-          <Row>
-            <Input
-              id="token-search-input"
-              placeholder={t('Search by name or paste address')}
-              scale="lg"
-              autoComplete="off"
-              value={searchQuery}
-              ref={inputRef as RefObject<HTMLInputElement>}
-              onChange={handleInput}
-              onKeyDown={handleEnter}
-            />
-          </Row>
-        )}
-        {showCommonBases && (
-          <CommonBases
-            chainId={chainId}
-            onSelect={handleCurrencySelect}
-            selectedCurrency={selectedCurrency}
-            commonBasesType={commonBasesType}
+    <AutoColumn gap="16px">
+      {showSearchInput && (
+        <Row>
+          <Input
+            id="token-search-input"
+            placeholder={t('Search by name or paste address')}
+            scale="lg"
+            autoComplete="off"
+            value={searchQuery}
+            ref={inputRef as RefObject<HTMLInputElement>}
+            onChange={handleInput}
+            onKeyDown={handleEnter}
           />
-        )}
-      </AutoColumn>
-      {getCurrencyListRows()}
-    </>
+        </Row>
+      )}
+      {showCommonBases && (
+        <CommonBases
+          chainId={chainId}
+          onSelect={handleCurrencySelect}
+          selectedCurrency={selectedCurrency}
+          commonBasesType={commonBasesType}
+          selectedChainId={selectedChainId}
+        />
+      )}
+    </AutoColumn>
   )
 }
 

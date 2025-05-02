@@ -1,6 +1,6 @@
 import { usePreviousValue } from '@pancakeswap/hooks'
 import { useTranslation } from '@pancakeswap/localization'
-import { Currency, Token } from '@pancakeswap/sdk'
+import { ChainId, Currency, Token } from '@pancakeswap/sdk'
 import { TokenList, WrappedTokenInfo } from '@pancakeswap/token-lists'
 import { enableList, removeList, useFetchListCallback } from '@pancakeswap/token-lists/react'
 import {
@@ -62,13 +62,14 @@ const StyledModalBody = styled(ModalBody)`
 
 export interface CurrencySearchModalProps extends InjectedModalProps {
   selectedCurrency?: Currency | null
-  onCurrencySelect?: (currency: Currency) => void
+  onCurrencySelect?: (currency: Currency, chainId?: ChainId) => void
   otherSelectedCurrency?: Currency | null
   showCommonBases?: boolean
   commonBasesType?: string
   showSearchInput?: boolean
   tokensToShow?: Token[]
   showCurrencyInHeader?: boolean
+  selectedChainId?: ChainId
 }
 
 export default function CurrencySearchModal({
@@ -81,13 +82,14 @@ export default function CurrencySearchModal({
   showSearchInput,
   tokensToShow,
   showCurrencyInHeader = false,
-}: CurrencySearchModalProps) {
+  selectedChainId,
+}: Readonly<CurrencySearchModalProps>) {
   const [modalView, setModalView] = useState<CurrencyModalView>(CurrencyModalView.search)
 
   const handleCurrencySelect = useCallback(
-    (currency: Currency) => {
+    (currency: Currency, chainId?: ChainId) => {
       onDismiss?.()
-      onCurrencySelect?.(currency)
+      onCurrencySelect?.(currency, chainId)
     },
     [onDismiss, onCurrencySelect],
   )
@@ -222,9 +224,10 @@ export default function CurrencySearchModal({
             onCurrencySelect={handleCurrencySelect}
             selectedCurrency={selectedCurrency}
             otherSelectedCurrency={otherSelectedCurrency}
+            selectedChainId={selectedChainId}
             showCommonBases={showCommonBases}
             commonBasesType={commonBasesType}
-            showSearchInput={showSearchInput}
+            showSearchInput={false}
             showImportView={() => setModalView(CurrencyModalView.importToken)}
             setImportToken={setImportToken}
             height={height}

@@ -1,3 +1,4 @@
+import { CA } from '@arcana/ca-sdk'
 import { ChainId } from '@pancakeswap/chains'
 import { useTranslation } from '@pancakeswap/localization'
 import {
@@ -14,6 +15,7 @@ import {
 import ConnectWalletButton from 'components/ConnectWalletButton'
 import useAirdropModalStatus from 'components/GlobalCheckClaimStatus/hooks/useAirdropModalStatus'
 import Trans from 'components/Trans'
+import { useArcana } from 'contexts/ArcanaProvider'
 import { useActiveChainId } from 'hooks/useActiveChainId'
 import useAuth from 'hooks/useAuth'
 import { useDomainNameForAddress } from 'hooks/useDomain'
@@ -27,7 +29,7 @@ import ProfileUserMenuItem from './ProfileUserMenuItem'
 import WalletModal, { WalletView } from './WalletModal'
 import WalletUserMenuItem from './WalletUserMenuItem'
 
-const UserMenuItems = () => {
+const UserMenuItems = ({ ca }: { ca: CA | null }) => {
   const { t } = useTranslation()
   const { chainId, isWrongNetwork } = useActiveChainId()
   const { logout } = useAuth()
@@ -36,9 +38,9 @@ const UserMenuItems = () => {
   const { isInitialized, isLoading, profile } = useProfile()
   const { shouldShowModal } = useAirdropModalStatus()
 
-  const [onPresentWalletModal] = useModal(<WalletModal initialView={WalletView.WALLET_INFO} />)
-  const [onPresentTransactionModal] = useModal(<WalletModal initialView={WalletView.TRANSACTIONS} />)
-  const [onPresentWrongNetworkModal] = useModal(<WalletModal initialView={WalletView.WRONG_NETWORK} />)
+  const [onPresentWalletModal] = useModal(<WalletModal initialView={WalletView.WALLET_INFO} ca={ca} />)
+  const [onPresentTransactionModal] = useModal(<WalletModal initialView={WalletView.TRANSACTIONS} ca={ca} />)
+  const [onPresentWrongNetworkModal] = useModal(<WalletModal initialView={WalletView.WRONG_NETWORK} ca={ca} />)
   const hasProfile = isInitialized && !!profile
 
   const onClickWalletMenu = useCallback((): void => {
@@ -87,6 +89,7 @@ const UserMenu = () => {
   const avatarSrc = profile?.nft?.image?.thumbnail ?? avatar
   const [userMenuText, setUserMenuText] = useState<string>('')
   const [userMenuVariable, setUserMenuVariable] = useState<UserMenuVariant>('default')
+  const { ca, initArcana } = useArcana()
 
   useEffect(() => {
     if (hasPendingTransactions) {
@@ -98,6 +101,12 @@ const UserMenu = () => {
     }
   }, [hasPendingTransactions, pendingNumber, t])
 
+  useEffect(() => {
+    if (!ca && account) {
+      initArcana()
+    }
+  }, [ca, account])
+
   if (account) {
     return (
       <UIKitUserMenu
@@ -107,7 +116,7 @@ const UserMenu = () => {
         text={userMenuText}
         variant={userMenuVariable}
       >
-        {({ isOpen }) => (isOpen ? <UserMenuItems /> : null)}
+        {({ isOpen }) => (isOpen ? <UserMenuItems ca={ca} /> : null)}
       </UIKitUserMenu>
     )
   }
@@ -115,7 +124,7 @@ const UserMenu = () => {
   if (isWrongNetwork) {
     return (
       <UIKitUserMenu text={t('Network')} variant="danger">
-        {({ isOpen }) => (isOpen ? <UserMenuItems /> : null)}
+        {({ isOpen }) => (isOpen ? <UserMenuItems ca={ca} /> : null)}
       </UIKitUserMenu>
     )
   }

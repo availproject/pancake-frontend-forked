@@ -1,6 +1,6 @@
 import { useTranslation } from '@pancakeswap/localization'
-import { Currency, CurrencyAmount, Price, Trade, TradeType } from '@pancakeswap/sdk'
-import { CAKE, STABLE_COIN, USDC, USDT } from '@pancakeswap/tokens'
+import { ChainId, Currency, CurrencyAmount, Price, Trade, TradeType } from '@pancakeswap/sdk'
+import { USDC, USDT } from '@pancakeswap/tokens'
 import { PairDataTimeWindowEnum } from '@pancakeswap/uikit'
 import tryParseAmount from '@pancakeswap/utils/tryParseAmount'
 import { useQuery } from '@tanstack/react-query'
@@ -11,7 +11,6 @@ import { useActiveChainId } from 'hooks/useActiveChainId'
 import { useAutoSlippageWithFallback } from 'hooks/useAutoSlippageWithFallback'
 import { useBestAMMTrade } from 'hooks/useBestAMMTrade'
 import { useGetENSAddressByName } from 'hooks/useGetENSAddressByName'
-import useNativeCurrency from 'hooks/useNativeCurrency'
 import { useAtom, useAtomValue } from 'jotai'
 import { useRouter } from 'next/router'
 import { ParsedUrlQuery } from 'querystring'
@@ -235,9 +234,11 @@ export function queryParametersToSwapState(
   return {
     [Field.INPUT]: {
       currencyId: inputCurrency,
+      chainId: parsedQs.inputCurrencyChainId as unknown as ChainId,
     },
     [Field.OUTPUT]: {
       currencyId: outputCurrency,
+      chainId: parsedQs.outputCurrencyChainId as unknown as ChainId,
     },
     typedValue: parseTokenAmountURLParameter(parsedQs.exactAmount),
     independentField: parseIndependentFieldURLParameter(parsedQs.exactField),
@@ -253,19 +254,14 @@ export function useDefaultsFromURLSearch():
   | undefined {
   const { chainId } = useActiveChainId()
   const [, dispatch] = useAtom(swapReducerAtom)
-  const native = useNativeCurrency()
   const { query, isReady } = useRouter()
   const [result, setResult] = useState<
     { inputCurrencyId: string | undefined; outputCurrencyId: string | undefined } | undefined
   >()
 
   useEffect(() => {
-    if (!chainId || !native || !isReady) return
-    const parsed = queryParametersToSwapState(
-      query,
-      native.symbol,
-      CAKE[chainId]?.address ?? STABLE_COIN[chainId]?.address ?? USDC[chainId]?.address ?? USDT[chainId]?.address,
-    )
+    if (!chainId || !isReady) return
+    const parsed = queryParametersToSwapState(query, USDT[chainId]?.address, USDC[chainId]?.address)
 
     dispatch(
       replaceSwapState({
@@ -273,11 +269,13 @@ export function useDefaultsFromURLSearch():
         field: parsed.independentField,
         inputCurrencyId: parsed[Field.INPUT].currencyId,
         outputCurrencyId: parsed[Field.OUTPUT].currencyId,
+        inputCurrencyChainId: ChainId.ARBITRUM_ONE,
+        outputCurrencyChainId: ChainId.BASE,
         recipient: null,
       }),
     )
     setResult({ inputCurrencyId: parsed[Field.INPUT].currencyId, outputCurrencyId: parsed[Field.OUTPUT].currencyId })
-  }, [dispatch, chainId, query, native, isReady])
+  }, [dispatch, chainId, query, isReady])
 
   return result
 }

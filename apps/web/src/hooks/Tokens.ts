@@ -1,13 +1,13 @@
 /* eslint-disable no-param-reassign */
 import { ChainId } from '@pancakeswap/chains'
-import { type Address, zeroAddress } from 'viem'
-import { ERC20Token, Currency, NativeCurrency, Token } from '@pancakeswap/sdk'
-
+import { Currency, ERC20Token, NATIVE, NativeCurrency, Token } from '@pancakeswap/sdk'
 import { TokenAddressMap } from '@pancakeswap/token-lists'
 import { useReadContracts } from '@pancakeswap/wagmi'
 import { GELATO_NATIVE } from 'config/constants'
 import { UnsafeCurrency } from 'config/constants/types'
 import { useAtomValue } from 'jotai'
+import memoize from 'lodash/memoize'
+import uniqueId from 'lodash/uniqueId'
 import { useMemo } from 'react'
 import {
   combinedCurrenciesMapFromActiveUrlsAtom,
@@ -17,9 +17,8 @@ import {
   useWarningTokenList,
 } from 'state/lists/hooks'
 import { safeGetAddress } from 'utils'
-import { erc20Abi } from 'viem'
-import memoize from 'lodash/memoize'
-import uniqueId from 'lodash/uniqueId'
+import { chains as evmChains } from 'utils/wagmi'
+import { type Address, erc20Abi, zeroAddress } from 'viem'
 import useUserAddedTokens, { useUserAddedTokensByChainIds } from '../state/user/hooks/useUserAddedTokens'
 import { useActiveChainId } from './useActiveChainId'
 import useNativeCurrency from './useNativeCurrency'
@@ -304,4 +303,24 @@ export function useOnRampCurrency(currencyId: string | undefined): NativeCurrenc
   const token = useOnRampToken(currencyId)
 
   return isNative ? native : token
+}
+
+const SHORT_SYMBOL = {
+  [ChainId.ETHEREUM]: 'ETH',
+  [ChainId.BASE]: 'BASE',
+  [ChainId.ARBITRUM_ONE]: 'ARB',
+} as const
+
+export function useSwapChain(chainId: ChainId | undefined, fieldType: 'input' | 'output' = 'input') {
+  const chain = useMemo(() => {
+    if (!chainId) return undefined
+    return evmChains.find((c) => c.id === chainId)
+  }, [chainId])
+  const symbol =
+    (chain?.id ? SHORT_SYMBOL[chain.id] ?? NATIVE[chain.id]?.symbol : undefined) ?? chain?.nativeCurrency?.symbol
+
+  return {
+    chain: chain ?? (fieldType === 'input' ? evmChains[13] : evmChains[8]),
+    symbol,
+  }
 }

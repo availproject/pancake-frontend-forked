@@ -1,3 +1,4 @@
+import { CA } from '@arcana/ca-sdk'
 import { useTranslation } from '@pancakeswap/localization'
 import {
   ButtonMenu,
@@ -16,7 +17,6 @@ import { styled } from 'styled-components'
 import { parseEther } from 'viem'
 import { useAccount, useBalance } from 'wagmi'
 import WalletInfo from './WalletInfo'
-import WalletTransactions from './WalletTransactions'
 import WalletWrongNetwork from './WalletWrongNetwork'
 
 export enum WalletView {
@@ -27,6 +27,7 @@ export enum WalletView {
 
 interface WalletModalProps extends InjectedModalProps {
   initialView?: WalletView
+  ca?: CA | null
 }
 
 export const LOW_NATIVE_BALANCE = parseEther('0.002', 'wei')
@@ -53,7 +54,7 @@ const TabsComponent: React.FC<React.PropsWithChildren<TabsComponentProps>> = ({ 
     <Tabs>
       <ButtonMenu scale="sm" variant="subtle" onItemClick={handleClick} activeIndex={view} fullWidth>
         <ButtonMenuItem>{t('Wallet')}</ButtonMenuItem>
-        <ButtonMenuItem>{t('Transactions')}</ButtonMenuItem>
+        <></>
       </ButtonMenu>
     </Tabs>
   )
@@ -62,6 +63,7 @@ const TabsComponent: React.FC<React.PropsWithChildren<TabsComponentProps>> = ({ 
 const WalletModal: React.FC<React.PropsWithChildren<WalletModalProps>> = ({
   initialView = WalletView.WALLET_INFO,
   onDismiss,
+  ca,
 }) => {
   const [view, setView] = useState(initialView)
   const { t } = useTranslation()
@@ -86,9 +88,13 @@ const WalletModal: React.FC<React.PropsWithChildren<WalletModalProps>> = ({
       {view !== WalletView.WRONG_NETWORK && <TabsComponent view={view} handleClick={handleClick} />}
       <ModalBody p="24px" width="100%">
         {view === WalletView.WALLET_INFO && (
-          <WalletInfo hasLowNativeBalance={hasLowNativeBalance} switchView={handleClick} onDismiss={onDismiss} />
+          <WalletInfo
+            ca={ca}
+            hasLowNativeBalance={hasLowNativeBalance}
+            switchView={handleClick}
+            onDismiss={onDismiss}
+          />
         )}
-        {view === WalletView.TRANSACTIONS && !!onDismiss && <WalletTransactions onDismiss={onDismiss} />}
         {view === WalletView.WRONG_NETWORK && !!onDismiss && <WalletWrongNetwork onDismiss={onDismiss} />}
       </ModalBody>
     </ModalWrapper>

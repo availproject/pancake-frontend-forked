@@ -1,5 +1,5 @@
 import { MotionBox, TooltipText, useTooltip, WalletFilledV2Icon } from "@pancakeswap/uikit";
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { styled } from "styled-components";
 import { truncateDecimals } from "../utils/numbers";
 
@@ -31,8 +31,20 @@ export const WalletAssetDisplay: React.FC<{
   onMax?: () => void;
   balance?: string;
   isUserInsufficientBalance?: boolean;
-}> = memo(({ balance, onMax, isUserInsufficientBalance }) => {
-  const { targetRef, tooltip, tooltipVisible } = useTooltip(balance || "", {
+  balanceOnSelectedChain?: string;
+  chainName?: string;
+  symbol?: string;
+}> = memo(({ balance, onMax, isUserInsufficientBalance, balanceOnSelectedChain, chainName, symbol }) => {
+  const toolTipContent = useMemo(() => {
+    if (chainName && balanceOnSelectedChain) {
+      return `Total ${symbol} Balance: ${balance} \n ${symbol} Balance on ${chainName ?? ""}: ${
+        balanceOnSelectedChain ?? ""
+      }`;
+    }
+    return balance ?? "";
+  }, [balance, balanceOnSelectedChain, chainName]);
+
+  const { targetRef, tooltip, tooltipVisible } = useTooltip(toolTipContent, {
     placement: "right",
     avoidToStopPropagation: true,
   });
