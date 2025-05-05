@@ -11,7 +11,6 @@ export function useSwapActionHandlers(): {
   onChangeRecipient: (recipient: string | null) => void
 } {
   const [, dispatch] = useAtom(swapReducerAtom)
-
   const onSwitchTokens = useCallback(() => {
     dispatch(switchCurrencies())
     // eslint-disable-next-line react-hooks/exhaustive-deps

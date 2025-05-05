@@ -1,4 +1,5 @@
-import { TradeType } from '@pancakeswap/sdk'
+import { ChainId, TradeType } from '@pancakeswap/sdk'
+import { USDC, USDT } from '@pancakeswap/tokens'
 import tryParseAmount from '@pancakeswap/utils/tryParseAmount'
 import { useUserSingleHopOnly } from '@pancakeswap/utils/user'
 
@@ -17,6 +18,52 @@ import {
 
 interface Options {
   maxHops?: number
+}
+
+interface SwapOrder {
+  inputCurrencyId: string
+  inputCurrencyChainId: ChainId
+  outputCurrencyId: string
+  outputCurrencyChainId: ChainId
+}
+
+export const buildSwapOrder = (
+  inputCurrencyId: string | undefined,
+  inputChainId: ChainId | undefined,
+): SwapOrder | undefined => {
+  // For Arbitrum chain
+  if (inputChainId === ChainId.ARBITRUM_ONE) {
+    // If input is USDT on Arbitrum, set output as USDC on Arbitrum
+    if (inputCurrencyId === USDT[ChainId.ARBITRUM_ONE].symbol) {
+      return {
+        inputCurrencyId: USDT[ChainId.ARBITRUM_ONE].address,
+        inputCurrencyChainId: ChainId.ARBITRUM_ONE,
+        outputCurrencyId: USDC[ChainId.ARBITRUM_ONE].address,
+        outputCurrencyChainId: ChainId.ARBITRUM_ONE,
+      }
+    }
+    return {
+      inputCurrencyId: USDC[ChainId.ARBITRUM_ONE].address,
+      inputCurrencyChainId: ChainId.ARBITRUM_ONE,
+      outputCurrencyId: USDT[ChainId.ARBITRUM_ONE].address,
+      outputCurrencyChainId: ChainId.ARBITRUM_ONE,
+    }
+  }
+  // For Base chain
+  if (inputCurrencyId === USDT[ChainId.BASE].symbol) {
+    return {
+      inputCurrencyId: USDT[ChainId.BASE].address,
+      inputCurrencyChainId: ChainId.BASE,
+      outputCurrencyId: USDC[ChainId.BASE].address,
+      outputCurrencyChainId: ChainId.BASE,
+    }
+  }
+  return {
+    inputCurrencyId: USDC[ChainId.BASE].address,
+    inputCurrencyChainId: ChainId.BASE,
+    outputCurrencyId: USDT[ChainId.BASE].address,
+    outputCurrencyChainId: ChainId.BASE,
+  }
 }
 
 export function useSwapBestOrder({ maxHops }: Options = {}) {

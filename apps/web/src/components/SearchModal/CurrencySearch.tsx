@@ -3,14 +3,13 @@ import { useTranslation } from '@pancakeswap/localization'
 /* eslint-disable no-restricted-syntax */
 import { ChainId, Currency, Token } from '@pancakeswap/sdk'
 import { WrappedTokenInfo, createFilterToken } from '@pancakeswap/token-lists'
-import { AutoColumn, Box, Column, Input, Text, useMatchBreakpoints } from '@pancakeswap/uikit'
+import { AutoColumn, Input, useMatchBreakpoints } from '@pancakeswap/uikit'
 import { useAudioPlay } from '@pancakeswap/utils/user'
 import { KeyboardEvent, RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FixedSizeList } from 'react-window'
 import { isAddress } from 'viem'
 
 import { useActiveChainId } from 'hooks/useActiveChainId'
-import useNativeCurrency from 'hooks/useNativeCurrency'
 import { useAllLists, useInactiveListUrls } from 'state/lists/hooks'
 import { safeGetAddress } from 'utils'
 
@@ -18,8 +17,6 @@ import { useTokenComparator } from 'hooks/useTokenComparator'
 import { useAllTokens, useIsUserAddedToken, useToken } from '../../hooks/Tokens'
 import Row from '../Layout/Row'
 import CommonBases from './CommonBases'
-import CurrencyList from './CurrencyList'
-import ImportRow from './ImportRow'
 import { getSwapSound } from './swapSound'
 
 interface CurrencySearchProps {
@@ -112,14 +109,6 @@ function CurrencySearch({
   const { isMobile } = useMatchBreakpoints()
   const [audioPlay] = useAudioPlay()
 
-  const native = useNativeCurrency()
-
-  const showNative: boolean = useMemo(() => {
-    if (tokensToShow) return false
-    const s = debouncedQuery.toLowerCase().trim()
-    return native && native.symbol?.toLowerCase?.()?.indexOf(s) !== -1
-  }, [debouncedQuery, native, tokensToShow])
-
   const filteredTokens: Token[] = useMemo(() => {
     const filterToken = createFilterToken(debouncedQuery, (address) => isAddress(address))
     return Object.values(tokensToShow || allTokens).filter(filterToken)
@@ -161,9 +150,7 @@ function CurrencySearch({
     (e: KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Enter') {
         const s = debouncedQuery.toLowerCase().trim()
-        if (s === native.symbol.toLowerCase().trim()) {
-          handleCurrencySelect(native)
-        } else if (filteredSortedTokens.length > 0) {
+        if (filteredSortedTokens.length > 0) {
           if (
             filteredSortedTokens[0].symbol?.toLowerCase() === debouncedQuery.trim().toLowerCase() ||
             filteredSortedTokens.length === 1
@@ -173,70 +160,8 @@ function CurrencySearch({
         }
       }
     },
-    [debouncedQuery, filteredSortedTokens, handleCurrencySelect, native],
+    [debouncedQuery, filteredSortedTokens, handleCurrencySelect],
   )
-
-  // if no results on main list, show option to expand into inactive
-  const filteredInactiveTokens = useSearchInactiveTokenLists(debouncedQuery)
-
-  const hasFilteredInactiveTokens = Boolean(filteredInactiveTokens?.length)
-
-  const getCurrencyListRows = useCallback(() => {
-    if (searchToken && !searchTokenIsAdded && !hasFilteredInactiveTokens) {
-      return (
-        <Column style={{ padding: '20px 0', height: '100%' }}>
-          <ImportRow
-            onCurrencySelect={handleCurrencySelect}
-            token={searchToken}
-            showImportView={showImportView}
-            setImportToken={setImportToken}
-          />
-        </Column>
-      )
-    }
-
-    return Boolean(filteredSortedTokens?.length) || hasFilteredInactiveTokens ? (
-      <Box mx="-24px" mt="20px" mb="24px">
-        <CurrencyList
-          height={isMobile ? (showCommonBases ? height || 250 : height ? height + 80 : 350) : 390}
-          showNative={showNative}
-          currencies={filteredSortedTokens}
-          inactiveCurrencies={filteredInactiveTokens}
-          breakIndex={
-            Boolean(filteredInactiveTokens?.length) && filteredSortedTokens ? filteredSortedTokens.length : undefined
-          }
-          onCurrencySelect={handleCurrencySelect}
-          otherCurrency={otherSelectedCurrency}
-          selectedCurrency={selectedCurrency}
-          fixedListRef={fixedList}
-          showImportView={showImportView}
-          setImportToken={setImportToken}
-        />
-      </Box>
-    ) : (
-      <Column style={{ padding: '20px', height: '100%' }}>
-        <Text color="textSubtle" textAlign="center" mb="20px">
-          {t('No results found.')}
-        </Text>
-      </Column>
-    )
-  }, [
-    filteredInactiveTokens,
-    filteredSortedTokens,
-    handleCurrencySelect,
-    hasFilteredInactiveTokens,
-    otherSelectedCurrency,
-    searchToken,
-    searchTokenIsAdded,
-    selectedCurrency,
-    setImportToken,
-    showNative,
-    showImportView,
-    t,
-    showCommonBases,
-    isMobile,
-    height,
-  ])
 
   return (
     <AutoColumn gap="16px">

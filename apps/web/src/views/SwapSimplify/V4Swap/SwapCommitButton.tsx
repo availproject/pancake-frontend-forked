@@ -17,6 +17,7 @@ import {
 } from 'components/Menu/GlobalSettings/SettingsModalV2'
 import { SettingsMode } from 'components/Menu/GlobalSettings/types'
 import { BIG_INT_ZERO } from 'config/constants/exchange'
+import { useArcana } from 'contexts/ArcanaProvider'
 import { useCurrency } from 'hooks/Tokens'
 import { useIsTransactionUnsupported } from 'hooks/Trades'
 import { NoValidRouteError } from 'hooks/useBestAMMTrade'
@@ -137,6 +138,7 @@ const SwapCommitButtonInner = memo(function SwapCommitButtonInner({
   const { address: account } = useAccount()
   const { t } = useTranslation()
   const chainId = useChainId()
+  const { intentModal } = useArcana()
   // form data
   const { independentField } = useSwapState()
   const [inputCurrency, outputCurrency] = useSwapCurrency()
@@ -248,6 +250,7 @@ const SwapCommitButtonInner = memo(function SwapCommitButtonInner({
       onConfirm={onConfirm}
       openSettingModal={openSettingModal}
       customOnDismiss={reset}
+      intentModal={intentModal}
     />,
     true,
     true,

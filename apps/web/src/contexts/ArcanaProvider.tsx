@@ -57,6 +57,7 @@ interface ArcanaContextType {
   intentModal: IntentModalTrigger | null
   setIntentModal: Dispatch<SetStateAction<IntentModalTrigger | null>>
   initArcana: () => Promise<void>
+  arcanaBridge: (props: ArcanaBridgeProps) => Promise<void>
 }
 
 const ArcanaContext = createContext<ArcanaContextType | undefined>(undefined)

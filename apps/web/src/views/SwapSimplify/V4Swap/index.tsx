@@ -7,7 +7,6 @@ import { RiskDetailsPanel, useShouldRiskPanelDisplay } from 'components/AccessRi
 
 import { GasTokenSelector } from 'components/Paymaster/GasTokenSelector'
 import { useCurrency } from 'hooks/Tokens'
-import { useActiveChainId } from 'hooks/useActiveChainId'
 import { useAutoSlippageWithFallback } from 'hooks/useAutoSlippageWithFallback'
 import { useCurrencyUsdPrice } from 'hooks/useCurrencyUsdPrice'
 import { usePaymaster } from 'hooks/usePaymaster'
@@ -48,7 +47,6 @@ export function V4SwapForm() {
   } = useAllTypeBestTrade()
 
   const isWrapping = useIsWrapping()
-  const { chainId: activeChianId } = useActiveChainId()
   const isUserInsufficientBalance = useUserInsufficientBalance(bestOrder)
   const { shouldShowBuyCrypto, buyCryptoLink } = useBuyCryptoInfo(bestOrder)
 
@@ -112,7 +110,7 @@ export function V4SwapForm() {
     }
   }, [pauseQuoting, resumeQuoting, xOrder, ammOrder, inputUsdPrice, outputUsdPrice, betterOrder?.type])
   const {
-    [Field.INPUT]: { currencyId: inputCurrencyId },
+    [Field.INPUT]: { currencyId: inputCurrencyId, chainId: inputCurrencyChainId },
     [Field.OUTPUT]: { currencyId: outputCurrencyId },
   } = useSwapState()
 
@@ -175,7 +173,7 @@ export function V4SwapForm() {
               <RefreshButton
                 onRefresh={refreshOrder}
                 refreshDisabled={refreshDisabled}
-                chainId={activeChianId}
+                chainId={inputCurrencyChainId}
                 loading={!tradeLoaded}
               />
               <PricingAndSlippage

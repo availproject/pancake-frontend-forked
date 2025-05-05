@@ -61,7 +61,7 @@ const WalletInfo: React.FC<WalletInfoProps> = ({ hasLowNativeBalance, onDismiss,
       }
     }
     fetchBalances()
-  }, [ca])
+  }, [ca, account, chainId])
 
   const handleLogout = () => {
     onDismiss?.()

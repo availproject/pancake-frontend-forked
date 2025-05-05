@@ -22,8 +22,10 @@ import { wrappedCurrency } from 'utils/wrappedCurrency'
 import ConfirmSwapModalContainer from 'views/Swap/components/ConfirmSwapModalContainer'
 import { SwapTransactionErrorContent } from 'views/Swap/components/SwapTransactionErrorContent'
 
+import { IntentModalTrigger } from 'contexts/ArcanaProvider'
 import { Hash } from 'viem'
 import { InterfaceOrder, isXOrder } from 'views/Swap/utils'
+import ArcanaIntentContent from 'views/SwapSimplify/V4Swap/ArcanaIntentContent'
 import { TransactionConfirmSwapContentV2 } from '../components/TransactionConfirmSwapContentV2'
 import { useSlippageAdjustedAmounts } from '../hooks'
 import { ConfirmAction } from '../hooks/useConfirmModalState'
@@ -50,6 +52,7 @@ type ConfirmSwapModalV2Props = InjectedModalProps & {
   onDismiss?: () => void
   confirmModalState: ConfirmModalState
   pendingModalSteps: ConfirmAction[]
+  intentModal: IntentModalTrigger | null
   order?: InterfaceOrder | null
   originalOrder?: InterfaceOrder | null
   currencyBalances?: { [field in Field]?: CurrencyAmount<Currency> }
@@ -75,6 +78,7 @@ export const ConfirmSwapModalV2: React.FC<ConfirmSwapModalV2Props> = ({
   openSettingModal,
   onAcceptChanges,
   onConfirm,
+  intentModal,
 }) => {
   const { t } = useTranslation()
   const { chainId } = useActiveChainId()
@@ -155,6 +159,28 @@ export const ConfirmSwapModalV2: React.FC<ConfirmSwapModalV2Props> = ({
           asBadge
           currentStep={confirmModalState}
           approvalModalSteps={pendingModalSteps.map((step) => step.step) as any}
+        />
+      )
+    }
+
+    if (intentModal) {
+      return <ArcanaIntentContent intentModal={intentModal} />
+    }
+
+    if (confirmModalState === ConfirmModalState.BRIDGING_IN || confirmModalState === ConfirmModalState.BRIDGING_OUT) {
+      const title =
+        confirmModalState === ConfirmModalState.BRIDGING_IN
+          ? t('Bridging to Swap Chain...')
+          : t('Bridging to Destination...')
+
+      return (
+        <SwapPendingModalContent
+          title={title}
+          currencyA={currencyA}
+          currencyB={currencyB}
+          amountA={amountA}
+          amountB={amountB}
+          currentStep={confirmModalState}
         />
       )
     }
@@ -288,6 +314,7 @@ export const ConfirmSwapModalV2: React.FC<ConfirmSwapModalV2Props> = ({
     showAddToWalletButton,
     orderHash,
     token,
+    intentModal,
   ])
 
   if (!chainId) return null
