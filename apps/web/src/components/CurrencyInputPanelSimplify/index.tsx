@@ -282,7 +282,7 @@ const CurrencyInputPanelSimplify = memo(function CurrencyInputPanel({
     }
 
     fetchBalances()
-  }, [ca])
+  }, [ca, account, currency])
 
   useEffect(() => {
     if (isInputFocus) {
