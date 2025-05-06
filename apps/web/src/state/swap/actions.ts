@@ -18,6 +18,8 @@ export const replaceSwapState = createAction<{
   typedValue: string
   inputCurrencyId?: string
   outputCurrencyId?: string
+  displayInputCurrencyId?: string
+  displayOutputCurrencyId?: string
   inputCurrencyChainId?: ChainId
   outputCurrencyChainId?: ChainId
   recipient: string | null
@@ -33,3 +35,10 @@ export const updateDerivedPairData = createAction<{
   pairId: string
   timeWindow: PairDataTimeWindowEnum
 }>('swap/updateDerivedPairData')
+
+export const setDisplayCurrency = createAction<{
+  field: Field
+  currencyId: string
+}>('swap/setDisplayCurrency')
+
+export const syncDisplayWithActual = createAction<void>('swap/syncDisplayWithActual')

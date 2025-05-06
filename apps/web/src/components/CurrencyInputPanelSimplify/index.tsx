@@ -25,7 +25,6 @@ import { StablePair } from 'views/AddLiquidity/AddStableLiquidity/hooks/useStabl
 
 import { RiskInputPanelDisplay } from 'components/AccessRisk/SwapRevampRiskDisplay'
 import { FiatLogo } from 'components/Logo/CurrencyLogo'
-import { useCurrencyBalance } from 'state/wallet/hooks'
 import { useAccount } from 'wagmi'
 import CurrencySearchModal from '../SearchModal/CurrencySearchModal'
 import { FONT_SIZE, LOGO_SIZE, useFontSize } from './state'
@@ -219,7 +218,6 @@ const CurrencyInputPanelSimplify = memo(function CurrencyInputPanel({
   // const value = useRef<string | undefined>(defaultValue)
   const [value, setValue] = useState<string | undefined>(defaultValue)
   const [allBalances, setAllBalances] = useState<any[] | null>(null)
-  const selectedCurrencyBalance = useCurrencyBalance(account ?? undefined, currency ?? undefined)
   const { t } = useTranslation()
 
   const mode = id

@@ -57,7 +57,7 @@ const ConfirmButtonWrapper = styled.div`
 `
 
 export const SUPPORTED_CHAIN_IDS = [ChainId.BASE, ChainId.ARBITRUM_ONE]
-const SUPPORTED_TOKENS = [...SUGGESTED_BASES[ChainId.LINEA]]
+const SUPPORTED_TOKENS = [...SUGGESTED_BASES[ChainId.ARBITRUM_ONE]]
 
 export default function CommonBases({
   chainId,
@@ -65,14 +65,12 @@ export default function CommonBases({
   selectedCurrency,
   selectedChainId,
   commonBasesType,
-  enableChainIdSelect = false,
 }: Readonly<{
   chainId?: ChainId | null
   selectedChainId?: ChainId | null
   commonBasesType
   selectedCurrency?: Currency | null
   onSelect: (currency: Currency, chainId?: ChainId) => void
-  enableChainIdSelect?: boolean
 }>) {
   const native = useNativeCurrency()
   const [selectedToken, setSelectedToken] = useState(selectedCurrency ?? native?.wrapped)

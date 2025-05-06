@@ -5,6 +5,7 @@ import { SwapUIV2 } from '@pancakeswap/widgets-internal'
 import { useTokenRisk } from 'components/AccessRisk'
 import { RiskDetailsPanel, useShouldRiskPanelDisplay } from 'components/AccessRisk/SwapRevampRiskDisplay'
 
+import { ChainId } from '@pancakeswap/chains'
 import { GasTokenSelector } from 'components/Paymaster/GasTokenSelector'
 import { useCurrency } from 'hooks/Tokens'
 import { useAutoSlippageWithFallback } from 'hooks/useAutoSlippageWithFallback'
@@ -109,13 +110,14 @@ export function V4SwapForm() {
       afterCommit: resumeQuoting,
     }
   }, [pauseQuoting, resumeQuoting, xOrder, ammOrder, inputUsdPrice, outputUsdPrice, betterOrder?.type])
+
   const {
     [Field.INPUT]: { currencyId: inputCurrencyId, chainId: inputCurrencyChainId },
     [Field.OUTPUT]: { currencyId: outputCurrencyId },
   } = useSwapState()
 
-  const inputCurrency = useCurrency(inputCurrencyId)
-  const outputCurrency = useCurrency(outputCurrencyId)
+  const inputCurrency = useCurrency(inputCurrencyId, inputCurrencyChainId ?? ChainId.ARBITRUM_ONE)
+  const outputCurrency = useCurrency(outputCurrencyId, inputCurrencyChainId ?? ChainId.ARBITRUM_ONE)
 
   const { slippageTolerance: userSlippageTolerance } = useAutoSlippageWithFallback()
   const isSlippageTooHigh = useMemo(() => userSlippageTolerance > 500, [userSlippageTolerance])
@@ -124,6 +126,8 @@ export function V4SwapForm() {
   const token1Risk = useTokenRisk(outputCurrency?.wrapped)
 
   const { isPaymasterAvailable } = usePaymaster()
+
+  console.log('bestOrder', bestOrder)
 
   return (
     <SwapUIV2.SwapFormWrapper>

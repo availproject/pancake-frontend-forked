@@ -1,12 +1,15 @@
 import { ChainId } from '@pancakeswap/chains'
 import { createReducer } from '@reduxjs/toolkit'
 import { atomWithReducer } from 'jotai/utils'
+import { buildSwapOrder } from 'views/Swap/V3Swap/hooks/useSwapBestTrade'
 import {
   Field,
   replaceSwapState,
   selectCurrency,
+  setDisplayCurrency,
   setRecipient,
   switchCurrencies,
+  syncDisplayWithActual,
   typeInput,
   updateDerivedPairData,
   updatePairData,
@@ -19,10 +22,12 @@ export interface SwapState {
   readonly [Field.INPUT]: {
     readonly currencyId: string | undefined
     readonly chainId: ChainId | undefined
+    readonly displayCurrencyId?: string | undefined
   }
   readonly [Field.OUTPUT]: {
     readonly currencyId: string | undefined
     readonly chainId: ChainId | undefined
+    readonly displayCurrencyId?: string | undefined
   }
   readonly recipient: string | null
   readonly pairDataById: Record<number, Record<string, PairDataNormalized>> | null
@@ -35,10 +40,12 @@ const initialState: SwapState = {
   [Field.INPUT]: {
     currencyId: 'USDT',
     chainId: ChainId.ARBITRUM_ONE,
+    displayCurrencyId: undefined,
   },
   [Field.OUTPUT]: {
     currencyId: 'USDC',
     chainId: ChainId.BASE,
+    displayCurrencyId: undefined,
   },
   pairDataById: {},
   derivedPairDataById: {},
@@ -57,20 +64,26 @@ const reducer = createReducer<SwapState>(initialState, (builder) =>
             recipient,
             field,
             inputCurrencyId,
+            displayInputCurrencyId,
             outputCurrencyId,
+            displayOutputCurrencyId,
             inputCurrencyChainId,
             outputCurrencyChainId,
           },
         },
       ) => {
+        // something is going wrong here, I am sending currency id but inside the fn we are comparing symbol
+        const inputSwapOrder = buildSwapOrder(inputCurrencyId, inputCurrencyChainId)
         return {
           [Field.INPUT]: {
-            currencyId: inputCurrencyId,
-            chainId: inputCurrencyChainId,
+            currencyId: inputSwapOrder?.inputCurrencyId,
+            chainId: inputSwapOrder?.inputCurrencyChainId,
+            displayCurrencyId: displayInputCurrencyId,
           },
           [Field.OUTPUT]: {
-            currencyId: outputCurrencyId,
-            chainId: outputCurrencyChainId,
+            currencyId: inputSwapOrder?.outputCurrencyId,
+            chainId: inputSwapOrder?.outputCurrencyChainId,
+            displayCurrencyId: displayOutputCurrencyId,
           },
           independentField: field,
           typedValue,
@@ -82,25 +95,49 @@ const reducer = createReducer<SwapState>(initialState, (builder) =>
     )
     .addCase(selectCurrency, (state, { payload: { currencyId, chainId, field } }) => {
       const otherField = field === Field.INPUT ? Field.OUTPUT : Field.INPUT
+      const currentSwapOrder = buildSwapOrder(currencyId, chainId)
+
       if (currencyId === state[otherField].currencyId) {
+        // If currencies would be the same, we swap them
+        const otherSwapOrder = buildSwapOrder(state[field].currencyId, state[field].chainId)
         return {
           ...state,
           independentField: state.independentField === Field.INPUT ? Field.OUTPUT : Field.INPUT,
-          [field]: { currencyId, chainId },
-          [otherField]: { currencyId: state[field].currencyId, chainId: state[field].chainId },
+          [field]: {
+            currencyId: currentSwapOrder?.inputCurrencyId,
+            chainId: currentSwapOrder?.inputCurrencyChainId,
+            displayCurrencyId: state[field].displayCurrencyId,
+          },
+          [otherField]: {
+            currencyId: otherSwapOrder?.outputCurrencyId,
+            chainId: otherSwapOrder?.outputCurrencyChainId,
+            displayCurrencyId: state[otherField].displayCurrencyId,
+          },
         }
       }
       return {
         ...state,
-        [field]: { currencyId, chainId },
+        [field]: {
+          currencyId: currentSwapOrder?.inputCurrencyId,
+          chainId: currentSwapOrder?.inputCurrencyChainId,
+          displayCurrencyId: state[field].displayCurrencyId,
+        },
       }
     })
     .addCase(switchCurrencies, (state) => {
       return {
         ...state,
         independentField: state.independentField === Field.INPUT ? Field.OUTPUT : Field.INPUT,
-        [Field.INPUT]: { currencyId: state[Field.OUTPUT].currencyId, chainId: state[Field.OUTPUT].chainId },
-        [Field.OUTPUT]: { currencyId: state[Field.INPUT].currencyId, chainId: state[Field.INPUT].chainId },
+        [Field.INPUT]: {
+          currencyId: state[Field.OUTPUT].currencyId,
+          chainId: state[Field.OUTPUT].chainId,
+          displayCurrencyId: state[Field.OUTPUT].displayCurrencyId,
+        },
+        [Field.OUTPUT]: {
+          currencyId: state[Field.INPUT].currencyId,
+          chainId: state[Field.INPUT].chainId,
+          displayCurrencyId: state[Field.INPUT].displayCurrencyId,
+        },
       }
     })
     .addCase(typeInput, (state, { payload: { field, typedValue } }) => {
@@ -126,6 +163,29 @@ const reducer = createReducer<SwapState>(initialState, (builder) =>
         state.derivedPairDataById[pairId] = {}
       }
       state.derivedPairDataById[pairId][timeWindow] = pairData
+    })
+    .addCase(setDisplayCurrency, (state, { payload: { field, currencyId } }) => {
+      console.log('setDisplayCurrency', { field, currencyId })
+      return {
+        ...state,
+        [field]: {
+          ...state[field],
+          displayCurrencyId: currencyId,
+        },
+      }
+    })
+    .addCase(syncDisplayWithActual, (state) => {
+      return {
+        ...state,
+        [Field.INPUT]: {
+          ...state[Field.INPUT],
+          displayCurrencyId: state[Field.INPUT].currencyId,
+        },
+        [Field.OUTPUT]: {
+          ...state[Field.OUTPUT],
+          displayCurrencyId: state[Field.OUTPUT].currencyId,
+        },
+      }
     }),
 )
 

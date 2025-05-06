@@ -14,7 +14,7 @@ import { useAllLists, useInactiveListUrls } from 'state/lists/hooks'
 import { safeGetAddress } from 'utils'
 
 import { useTokenComparator } from 'hooks/useTokenComparator'
-import { useAllTokens, useIsUserAddedToken, useToken } from '../../hooks/Tokens'
+import { useAllTokens } from '../../hooks/Tokens'
 import Row from '../Layout/Row'
 import CommonBases from './CommonBases'
 import { getSwapSound } from './swapSound'
@@ -101,10 +101,6 @@ function CurrencySearch({
   const [invertSearchOrder] = useState<boolean>(false)
 
   const allTokens = useAllTokens()
-
-  // if they input an address, use it
-  const searchToken = useToken(debouncedQuery)
-  const searchTokenIsAdded = useIsUserAddedToken(searchToken)
 
   const { isMobile } = useMatchBreakpoints()
   const [audioPlay] = useAudioPlay()

@@ -57,11 +57,11 @@ const useSettingModal = (onDismiss) => {
 
 const useSwapCurrencies = () => {
   const {
-    [Field.INPUT]: { currencyId: inputCurrencyId },
-    [Field.OUTPUT]: { currencyId: outputCurrencyId },
+    [Field.INPUT]: { currencyId: inputCurrencyId, chainId: inputCurrencyChainId },
+    [Field.OUTPUT]: { currencyId: outputCurrencyId, chainId: outputCurrencyChainId },
   } = useSwapState()
-  const inputCurrency = useCurrency(inputCurrencyId) as Currency
-  const outputCurrency = useCurrency(outputCurrencyId) as Currency
+  const inputCurrency = useCurrency(inputCurrencyId, inputCurrencyChainId) as Currency
+  const outputCurrency = useCurrency(outputCurrencyId, outputCurrencyChainId) as Currency
   return { inputCurrency, outputCurrency }
 }
 

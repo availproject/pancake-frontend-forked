@@ -262,8 +262,8 @@ export function useFeeDataWithGasPrice(chainIdOverride?: number): {
   maxPriorityFeePerGas?: bigint
 } {
   const { chainId: chainId_ } = useActiveChainId()
-  const chainId = chainIdOverride ?? chainId_
-
+  const chainId = chainIdOverride ?? ChainId.ARBITRUM_ONE
+  console.log('useFeeDataWithGasPrice', { chainId })
   const gasPrice = useGasPrice(chainId)
   const { data } = useFeeData({
     chainId,

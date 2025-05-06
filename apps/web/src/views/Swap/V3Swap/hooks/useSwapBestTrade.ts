@@ -34,7 +34,10 @@ export const buildSwapOrder = (
   // For Arbitrum chain
   if (inputChainId === ChainId.ARBITRUM_ONE) {
     // If input is USDT on Arbitrum, set output as USDC on Arbitrum
-    if (inputCurrencyId === USDT[ChainId.ARBITRUM_ONE].symbol) {
+    if (
+      inputCurrencyId === USDT[ChainId.ARBITRUM_ONE].symbol ||
+      inputCurrencyId === USDT[ChainId.ARBITRUM_ONE].address
+    ) {
       return {
         inputCurrencyId: USDT[ChainId.ARBITRUM_ONE].address,
         inputCurrencyChainId: ChainId.ARBITRUM_ONE,
@@ -50,7 +53,7 @@ export const buildSwapOrder = (
     }
   }
   // For Base chain
-  if (inputCurrencyId === USDT[ChainId.BASE].symbol) {
+  if (inputCurrencyId === USDT[ChainId.BASE].symbol || inputCurrencyId === USDT[ChainId.BASE].address) {
     return {
       inputCurrencyId: USDT[ChainId.BASE].address,
       inputCurrencyChainId: ChainId.BASE,
@@ -70,11 +73,13 @@ export function useSwapBestOrder({ maxHops }: Options = {}) {
   const {
     independentField,
     typedValue,
-    [Field.INPUT]: { currencyId: inputCurrencyId },
+    [Field.INPUT]: { currencyId: inputCurrencyId, chainId: inputCurrencyChainId },
     [Field.OUTPUT]: { currencyId: outputCurrencyId },
   } = useSwapState()
-  const inputCurrency = useCurrency(inputCurrencyId)
-  const outputCurrency = useCurrency(outputCurrencyId)
+
+  const inputCurrency = useCurrency(inputCurrencyId, inputCurrencyChainId)
+  const outputCurrency = useCurrency(outputCurrencyId, inputCurrencyChainId)
+
   const enabled = usePCSXEnabledOnChain(inputCurrency?.chainId)
   const isExactIn = independentField === Field.INPUT
   const independentCurrency = isExactIn ? inputCurrency : outputCurrency
@@ -106,6 +111,9 @@ export function useSwapBestOrder({ maxHops }: Options = {}) {
     trackPerf: true,
     retry: 1,
   }
+
+  console.log('in swap best order', bestTradeOptions)
+
   const { fetchStatus, data, isStale, error, refetch } = useBestTradeFromApi(bestTradeOptions)
   useBestTradeFromApiShadow(bestTradeOptions, 'quote-api-ori')
   useBestTradeFromApiShadow(bestTradeOptions, 'quote-api-opt')
