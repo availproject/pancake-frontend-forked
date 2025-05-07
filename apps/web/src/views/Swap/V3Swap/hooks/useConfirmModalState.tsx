@@ -6,7 +6,6 @@ import { Currency, CurrencyAmount, Percent, Token } from '@pancakeswap/swap-sdk-
 import { useToast } from '@pancakeswap/uikit'
 import { Permit2Signature } from '@pancakeswap/universal-router-sdk'
 import { ConfirmModalState, useAsyncConfirmPriceImpactWithoutFee } from '@pancakeswap/widgets-internal'
-import { ToastDescriptionWithTx } from 'components/Toast'
 import { BLOCK_CONFIRMATION } from 'config/confirmation'
 import { ALLOWED_PRICE_IMPACT_HIGH, PRICE_IMPACT_WITHOUT_FEE_CONFIRM_MIN } from 'config/constants/exchange'
 import useAccountActiveChain from 'hooks/useAccountActiveChain'
@@ -17,7 +16,7 @@ import { usePermit2 } from 'hooks/usePermit2'
 import { usePermit2Requires } from 'hooks/usePermit2Requires'
 import { useSafeTxHashTransformer } from 'hooks/useSafeTxHashTransformer'
 import { useTransactionDeadline } from 'hooks/useTransactionDeadline'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { RetryableError, retry } from 'state/multicall/retry'
 import { useCurrencyBalance } from 'state/wallet/hooks'
 import { logGTMSwapTxSentEvent } from 'utils/customGTMEventTracking'
@@ -37,11 +36,13 @@ import { waitForXOrderReceipt } from 'views/Swap/x/api'
 import { useSendXOrder } from 'views/Swap/x/useSendXOrder'
 
 import { ChainId } from '@pancakeswap/chains'
+import { ToastDescriptionWithTx } from 'components/Toast'
 import { useArcana } from 'contexts/ArcanaProvider'
+import { useSwitchNetwork } from 'hooks/useSwitchNetwork'
 import { Field } from 'state/swap/actions'
 import { useSwapState } from 'state/swap/hooks'
 import { useSwapActionHandlers } from 'state/swap/useSwapActionHandlers'
-import { useSwitchChain } from 'wagmi'
+import { useAccount } from 'wagmi'
 import { computeTradePriceBreakdown } from '../utils/exchange'
 import { userRejectedError } from './useSendSwapTransaction'
 import { useSwapCallback } from './useSwapCallback'
@@ -71,19 +72,78 @@ const getTokenAllowance = ({
   })
 }
 
+const getOnChainBalance = async (token: Currency | undefined, chainId: number, userAddress: Address) => {
+  if (!token || token.isNative || !userAddress) return '0'
+  const client = publicClient({ chainId })
+  try {
+    const balance = await client.readContract({
+      abi: erc20Abi,
+      address: token.address,
+      functionName: 'balanceOf',
+      args: [userAddress],
+    })
+    return CurrencyAmount.fromRawAmount(token, balance).toExact()
+  } catch (e) {
+    console.error('Failed to fetch token balance:', e)
+    return '0' // Or throw
+  }
+}
+
 const useCreateConfirmSteps = (
   order: PriceOrder | undefined,
   amountToApprove: CurrencyAmount<Token> | undefined,
   spender: Address | undefined,
 ) => {
-  const { requireApprove, requirePermit, requireRevoke } = usePermit2Requires(amountToApprove, spender)
+  const {
+    [Field.INPUT]: { chainId: inputCurrencyChainId },
+    [Field.OUTPUT]: { chainId: outputCurrencyChainId },
+  } = useSwapState()
+  const { requireApprove, requirePermit, requireRevoke } = usePermit2Requires(
+    amountToApprove,
+    spender,
+    inputCurrencyChainId!,
+  )
   const nativeCurrency = useNativeCurrency(order?.trade?.inputAmount.currency.chainId)
   const { account } = useAccountActiveChain()
   const balance = useCurrencyBalance(account ?? undefined, nativeCurrency.wrapped)
 
-  return useCallback(() => {
+  const shouldSkipBridge = useCallback(async () => {
+    if (!inputCurrencyChainId || !account || !order?.trade?.inputAmount) {
+      console.log('shouldSkipBridge: Missing required data, defaulting to not skip.')
+      return false
+    }
+    const tokenForBalanceCheck = order.trade.inputAmount.currency
+    const requiredAmountStr = order.trade.inputAmount.toExact()
+    const currentOnChainBalanceStr = await getOnChainBalance(tokenForBalanceCheck, inputCurrencyChainId, account)
+    try {
+      const onChainBalanceNum = parseFloat(currentOnChainBalanceStr)
+      const requiredAmountNum = parseFloat(requiredAmountStr)
+
+      if (Number.isNaN(onChainBalanceNum) || Number.isNaN(requiredAmountNum)) {
+        console.warn('shouldSkipBridge: Could not parse amounts to numbers for comparison. Defaulting to not skip.')
+        return false
+      }
+
+      console.log('shouldSkipBridge: Comparing balance:', onChainBalanceNum, 'with required:', requiredAmountNum)
+
+      if (onChainBalanceNum >= requiredAmountNum) {
+        console.log('shouldSkipBridge: Balance is sufficient. SKIPPING bridge.')
+        return true
+      }
+      console.log('shouldSkipBridge: Balance is NOT sufficient. DOING bridge.')
+      return false
+    } catch (error) {
+      console.error('shouldSkipBridge: Error during amount comparison:', error)
+      return false
+    }
+  }, [inputCurrencyChainId, account, order])
+
+  return useCallback(async () => {
     const steps: ConfirmModalState[] = []
-    steps.push(ConfirmModalState.BRIDGING_IN)
+    const skipBridge = await shouldSkipBridge()
+    if (!skipBridge) {
+      steps.push(ConfirmModalState.BRIDGING_IN)
+    }
     if (
       isXOrder(order) &&
       order.trade.inputAmount.currency.isNative &&
@@ -102,9 +162,21 @@ const useCreateConfirmSteps = (
       steps.push(ConfirmModalState.PERMITTING)
     }
     steps.push(ConfirmModalState.PENDING_CONFIRMATION)
-    steps.push(ConfirmModalState.BRIDGING_OUT)
+    if (inputCurrencyChainId !== outputCurrencyChainId) {
+      steps.push(ConfirmModalState.BRIDGING_OUT)
+    }
+
     return steps
-  }, [requireRevoke, requireApprove, requirePermit, order, balance, amountToApprove])
+  }, [
+    requireRevoke,
+    requireApprove,
+    requirePermit,
+    order,
+    balance,
+    amountToApprove,
+    inputCurrencyChainId,
+    outputCurrencyChainId,
+  ])
 }
 
 // define the actions of each step
@@ -117,30 +189,59 @@ const useConfirmActions = (
   const { chainId } = useActiveChainId()
   const [deadline] = useTransactionDeadline()
   const safeTxHashTransformer = useSafeTxHashTransformer()
+  const bridgeOutAmount = useRef<string>('0')
   const { ca, arcanaBridge } = useArcana()
   const {
     [Field.INPUT]: { chainId: inputCurrencyChainId },
     [Field.OUTPUT]: { chainId: outputCurrencyChainId },
   } = useSwapState()
   const { onUserInput } = useSwapActionHandlers()
-  const { revoke, permit, approve } = usePermit2(amountToApprove, spender, {
+  const { revoke, permit, approve } = usePermit2(amountToApprove, spender, inputCurrencyChainId!, {
     enablePaymaster: true,
   })
   const nativeWrap = useNativeWrap()
   const { account } = useAccountActiveChain()
-  // console.log('useConfirmActions', {
-  //   order,
-  //   spender,
-  // })
+
+  const fetchTokenBalance = async (
+    token: Currency | undefined,
+    incomingChainId: number,
+    userAddress: Address,
+    updateOutputAmount: boolean = false,
+  ) => {
+    if (!token || token.isNative || !userAddress || !order) return '0'
+    const client = publicClient({ chainId: incomingChainId })
+    try {
+      const balance = await client.readContract({
+        abi: erc20Abi,
+        address: token.address,
+        functionName: 'balanceOf',
+        args: [userAddress],
+      })
+      const finalBalance = CurrencyAmount.fromRawAmount(token, balance).toExact()
+      console.log('UPDATED BALANCE', finalBalance)
+      if (updateOutputAmount) {
+        bridgeOutAmount.current =
+          finalBalance > order?.trade?.outputAmount.toExact() ? order?.trade?.outputAmount.toExact() : finalBalance
+        onUserInput(Field.INPUT, finalBalance)
+      }
+
+      return finalBalance
+    } catch (e) {
+      console.error('Failed to fetch token balance:', e)
+      return '0' // Or throw
+    }
+  }
+
   const getAllowanceArgs = useMemo(() => {
-    if (!chainId) return undefined
-    const inputs = [account, getPermit2Address(chainId)] as [`0x${string}`, `0x${string}`]
+    if (!inputCurrencyChainId) return undefined
+    const inputs = [account, getPermit2Address(inputCurrencyChainId)] as [`0x${string}`, `0x${string}`]
     return {
-      chainId,
+      inputCurrencyChainId,
       address: amountToApprove?.currency.address as Address,
       inputs,
     }
-  }, [chainId, amountToApprove?.currency.address, account])
+  }, [inputCurrencyChainId, amountToApprove?.currency.address, account])
+
   const [permit2Signature, setPermit2Signature] = useState<Permit2Signature | undefined>(undefined)
   const { callback: swap, error: swapError } = useSwapCallback({
     trade: isClassicOrder(order) ? order.trade : undefined,
@@ -158,7 +259,29 @@ const useConfirmActions = (
   const [orderHash, setOrderHash] = useState<Hex | undefined>(undefined)
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined)
   const { toastSuccess, toastError } = useToast()
-  const { switchChainAsync } = useSwitchChain()
+  const { switchNetworkAsync } = useSwitchNetwork()
+  const { chainId: currentWalletChainId } = useAccount()
+
+  const switchNetwork = useCallback(async () => {
+    if (currentWalletChainId !== inputCurrencyChainId) {
+      try {
+        console.log(
+          `Requesting chain switch to: ${inputCurrencyChainId} for permit. Wallet currently on: ${currentWalletChainId}`,
+        )
+        // Await the asynchronous network switch
+        await switchNetworkAsync(inputCurrencyChainId!)
+        console.log(`Successfully switched wallet chain to ${inputCurrencyChainId}`)
+      } catch (error) {
+        console.error(`Failed to switch chain to ${inputCurrencyChainId}:`, error)
+        const isUserRejection = userRejectedError(error) || (error as any)?.message?.includes('User rejected')
+        if (isUserRejection) {
+          showError(t('Chain switch rejected by user.'))
+        } else {
+          showError(t('Failed to switch network.'))
+        }
+      }
+    }
+  }, [currentWalletChainId, inputCurrencyChainId, switchNetworkAsync, t])
 
   const resetState = useCallback(() => {
     setConfirmState(ConfirmModalState.REVIEWING)
@@ -175,12 +298,12 @@ const useConfirmActions = (
 
   const retryWaitForTransaction = useCallback(
     async ({ hash, confirmations }: { hash?: Hex; confirmations?: number }) => {
-      if (hash && chainId) {
+      if (hash && inputCurrencyChainId) {
         let retryTimes = 0
         const getReceipt = async () => {
           console.info('retryWaitForTransaction', hash, retryTimes++)
           try {
-            return await publicClient({ chainId }).waitForTransactionReceipt({
+            return await publicClient({ chainId: inputCurrencyChainId }).waitForTransactionReceipt({
               hash,
               confirmations,
             })
@@ -200,7 +323,7 @@ const useConfirmActions = (
       }
       return undefined
     },
-    [chainId],
+    [inputCurrencyChainId],
   )
 
   // define the action of each step
@@ -222,8 +345,11 @@ const useConfirmActions = (
         try {
           // check if user really reset the approval to 0
           // const { data } = await refetch()
-          if (getAllowanceArgs) {
-            const data = await getTokenAllowance(getAllowanceArgs)
+          if (getAllowanceArgs && inputCurrencyChainId) {
+            const data = await getTokenAllowance({
+              ...getAllowanceArgs,
+              chainId: inputCurrencyChainId,
+            })
             newAllowanceRaw = data ?? 0n
           }
         } catch (error) {
@@ -272,27 +398,55 @@ const useConfirmActions = (
       action: async (nextState?: ConfirmModalState) => {
         setConfirmState(ConfirmModalState.PERMITTING)
         try {
-          const { tx, ...result } = (await permit()) ?? {}
+          switchNetwork()
+
+          const permitOutcome = await permit()
+
+          if (!permitOutcome || !permitOutcome.signature || !permitOutcome.details) {
+            console.error('Permit operation failed or returned incomplete signature data:', permitOutcome)
+            showError(t('Permit operation failed to provide a valid signature.'))
+            setPermit2Signature(undefined)
+            return
+          }
+
+          const { tx, ...signatureData } = permitOutcome
+
+          setPermit2Signature(signatureData as Permit2Signature)
+
           if (tx) {
             const hash = await safeTxHashTransformer(tx)
-            retryWaitForTransaction({ hash })
-            // use transferAllowance, no need to use permit signature
-            setPermit2Signature(undefined)
-          } else {
-            setPermit2Signature(result)
+            await retryWaitForTransaction({ hash })
           }
+
           setConfirmState(nextState ?? ConfirmModalState.PENDING_CONFIRMATION)
         } catch (error) {
+          setPermit2Signature(undefined)
           if (userRejectedError(error)) {
-            showError('Transaction rejected')
+            showError(t('Transaction rejected'))
           } else {
-            showError(typeof error === 'string' ? error : (error as any)?.message)
+            console.error('Error in permitStep:', error)
+            const permitStepErrorMessage =
+              typeof error === 'string'
+                ? error
+                : (error as any)?.shortMessage ||
+                  (error as any)?.message ||
+                  t('An unknown error occurred during the permit step.')
+            showError(permitStepErrorMessage)
           }
         }
       },
       showIndicator: true,
     }
-  }, [permit, retryWaitForTransaction, safeTxHashTransformer, showError])
+  }, [
+    permit,
+    retryWaitForTransaction,
+    safeTxHashTransformer,
+    showError,
+    t,
+    setPermit2Signature,
+    inputCurrencyChainId,
+    switchNetworkAsync,
+  ])
 
   const wrapStep = useMemo(() => {
     return {
@@ -335,7 +489,9 @@ const useConfirmActions = (
           connectedChain: chainId === ChainId.ARBITRUM_ONE,
           order,
         })
+
         try {
+          // switchNetwork()
           const result = await approve()
           if (result?.hash && chainId) {
             const hash = await safeTxHashTransformer(result.hash)
@@ -345,8 +501,11 @@ const useConfirmActions = (
           let newAllowanceRaw: bigint = amountToApprove?.quotient ?? 0n
           // check if user really approved the amount trade needs
           try {
-            if (getAllowanceArgs) {
-              const data = await getTokenAllowance(getAllowanceArgs)
+            if (getAllowanceArgs && inputCurrencyChainId) {
+              const data = await getTokenAllowance({
+                ...getAllowanceArgs,
+                chainId: inputCurrencyChainId,
+              })
               newAllowanceRaw = data ?? 0n
             }
           } catch (error) {
@@ -394,10 +553,10 @@ const useConfirmActions = (
   const swapStep = useMemo(() => {
     return {
       step: ConfirmModalState.PENDING_CONFIRMATION,
-      action: async () => {
+      action: async (nextState?: ConfirmModalState) => {
         setTxHash(undefined)
         setConfirmState(ConfirmModalState.PENDING_CONFIRMATION)
-
+        // switchNetwork()
         if (!swap) {
           resetState()
           return
@@ -417,7 +576,15 @@ const useConfirmActions = (
 
             await retryWaitForTransaction({ hash })
           }
+          if (order && inputCurrencyChainId && account) {
+            await fetchTokenBalance(order.trade.outputAmount.currency, inputCurrencyChainId, account, true)
+          }
+          if (nextState) {
+            setConfirmState(nextState)
+            return
+          }
           setConfirmState(ConfirmModalState.COMPLETED)
+          toastSuccess(t('Success!'), <ToastDescriptionWithTx>{t('Swap order filled')}</ToastDescriptionWithTx>)
         } catch (error: any) {
           console.error('swap error', error)
           if (userRejectedError(error)) {
@@ -434,10 +601,9 @@ const useConfirmActions = (
   const xSwapStep = useMemo(() => {
     return {
       step: ConfirmModalState.PENDING_CONFIRMATION,
-      action: async () => {
+      action: async (nextState?: ConfirmModalState) => {
         setTxHash(undefined)
         setConfirmState(ConfirmModalState.PENDING_CONFIRMATION)
-
         if (!isXOrder(order)) {
           resetState()
           return
@@ -495,13 +661,15 @@ const useConfirmActions = (
                 type: 'X-Filled',
               })
               setTxHash(receipt.transactionHash)
+              if (order && inputCurrencyChainId && account) {
+                await fetchTokenBalance(order.trade.outputAmount.currency, inputCurrencyChainId, account, true)
+              }
+              if (nextState) {
+                setConfirmState(nextState)
+                return
+              }
               setConfirmState(ConfirmModalState.COMPLETED)
-              toastSuccess(
-                t('Success!'),
-                <ToastDescriptionWithTx txHash={receipt.transactionHash} txChainId={xOrder.chainId}>
-                  {t('Swap order filled')}
-                </ToastDescriptionWithTx>,
-              )
+              toastSuccess(t('Success!'), <ToastDescriptionWithTx>{t('Swap order filled')}</ToastDescriptionWithTx>)
             }
           }
         } catch (error: any) {
@@ -527,6 +695,7 @@ const useConfirmActions = (
         console.log('bridgeInStep', order)
         try {
           if (!ca) throw new Error('Arcana client not initialized')
+          console.log('Bridge in step', { order })
           const inputTokenSymbol = order?.trade?.inputAmount?.currency?.symbol ?? ''
 
           await arcanaBridge({
@@ -535,13 +704,12 @@ const useConfirmActions = (
             targetChainId: inputCurrencyChainId ?? 0,
             callback: (updatedAmount) => {
               console.log('Bridge in completed with amount:', updatedAmount)
-              onUserInput(Field.INPUT, updatedAmount)
             },
           })
 
-          if (nextState && inputCurrencyChainId) {
-            await switchChainAsync({ chainId: inputCurrencyChainId })
-
+          if (nextState && inputCurrencyChainId && account) {
+            await fetchTokenBalance(order?.trade?.inputAmount?.currency, inputCurrencyChainId, account)
+            await switchNetworkAsync(inputCurrencyChainId)
             setConfirmState(nextState)
           }
         } catch (error) {
@@ -562,23 +730,23 @@ const useConfirmActions = (
   const bridgeOutStep = useMemo(() => {
     return {
       step: ConfirmModalState.BRIDGING_OUT,
-      action: async (nextState?: ConfirmModalState) => {
+      action: async () => {
         setConfirmState(ConfirmModalState.BRIDGING_OUT)
         try {
           if (!ca) throw new Error('Arcana client not initialized')
-
+          const outputTokenSymbol = order?.trade?.outputAmount?.currency?.symbol ?? ''
+          console.log('Bridge out step', { order, bridgeOutAmount: bridgeOutAmount.current })
           await arcanaBridge({
-            tokenSymbol: order?.trade?.outputAmount?.currency?.symbol ?? '',
-            amount: order?.trade?.outputAmount?.toExact() ?? '',
+            tokenSymbol: outputTokenSymbol,
+            amount: bridgeOutAmount.current,
             targetChainId: outputCurrencyChainId ?? 0,
             callback: (updatedAmount) => {
               console.log('Bridge out completed with amount:', updatedAmount)
             },
           })
-
-          if (nextState) {
-            setConfirmState(nextState)
-          }
+          await switchNetworkAsync(ChainId.LINEA)
+          setConfirmState(ConfirmModalState.COMPLETED)
+          toastSuccess(t('Success!'), <ToastDescriptionWithTx>{t('Swap order filled')}</ToastDescriptionWithTx>)
         } catch (error) {
           console.error('bridge out error', error)
           if (userRejectedError(error)) {
@@ -625,6 +793,10 @@ export const useConfirmModalState = (
     amountToApprove,
     spender,
   )
+  const { switchNetworkAsync } = useSwitchNetwork()
+  const {
+    [Field.INPUT]: { chainId: inputCurrencyChainId },
+  } = useSwapState()
   const preConfirmState = usePreviousValue(confirmState)
   const [confirmSteps, setConfirmSteps] = useState<ConfirmModalState[]>()
   const tradePriceBreakdown = useMemo(
@@ -647,6 +819,7 @@ export const useConfirmModalState = (
   }, [confirmPriceImpactWithoutFee, tradePriceBreakdown])
 
   const createSteps = useCreateConfirmSteps(order, amountToApprove, spender)
+  const { chainId: walletChainNow } = useAccount()
   const confirmActions = useMemo(() => {
     return confirmSteps?.map((step) => actions[step])
   }, [confirmSteps, actions])
@@ -664,16 +837,21 @@ export const useConfirmModalState = (
       if (!stepActions) {
         return
       }
+      await switchNetworkAsync(inputCurrencyChainId!)
+      console.log(
+        `Starting step: ${nextStep}, Swap Input ChainID: ${inputCurrencyChainId}, Wallet Active ChainID: ${walletChainNow}`,
+      )
 
       const step = stepActions.find((s) => s.step === state) ?? stepActions[0]
 
       await step.action(nextStep)
     },
-    [],
+    [walletChainNow],
   )
 
   const callToAction = useCallback(async () => {
-    const steps = createSteps()
+    const steps = await createSteps()
+
     setConfirmSteps(steps)
     const stepActions = steps.map((step) => actions[step])
     const nextStep = steps[1] ?? undefined

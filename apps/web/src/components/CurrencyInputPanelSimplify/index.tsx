@@ -218,6 +218,7 @@ const CurrencyInputPanelSimplify = memo(function CurrencyInputPanel({
   // const value = useRef<string | undefined>(defaultValue)
   const [value, setValue] = useState<string | undefined>(defaultValue)
   const [allBalances, setAllBalances] = useState<any[] | null>(null)
+  const fetchInterval = useRef<boolean | null>(null)
   const { t } = useTranslation()
 
   const mode = id
@@ -278,9 +279,18 @@ const CurrencyInputPanelSimplify = memo(function CurrencyInputPanel({
         setAllBalances(null)
       }
     }
+    if (fetchInterval.current === null || !!fetchInterval.current) {
+      fetchBalances()
+      fetchInterval.current = true
+    }
+    const interval = setInterval(() => {
+      if (fetchInterval.current) {
+        fetchBalances()
+      }
+    }, 10000)
 
-    fetchBalances()
-  }, [ca])
+    return () => clearInterval(interval)
+  }, [ca, account, fetchInterval])
 
   useEffect(() => {
     if (isInputFocus) {

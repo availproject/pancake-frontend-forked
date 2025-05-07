@@ -118,7 +118,6 @@ export function V4SwapForm() {
 
   const inputCurrency = useCurrency(inputCurrencyId, inputCurrencyChainId ?? ChainId.ARBITRUM_ONE)
   const outputCurrency = useCurrency(outputCurrencyId, inputCurrencyChainId ?? ChainId.ARBITRUM_ONE)
-
   const { slippageTolerance: userSlippageTolerance } = useAutoSlippageWithFallback()
   const isSlippageTooHigh = useMemo(() => userSlippageTolerance > 500, [userSlippageTolerance])
   const shouldRiskPanelDisplay = useShouldRiskPanelDisplay(inputCurrency?.wrapped, outputCurrency?.wrapped)
@@ -126,9 +125,6 @@ export function V4SwapForm() {
   const token1Risk = useTokenRisk(outputCurrency?.wrapped)
 
   const { isPaymasterAvailable } = usePaymaster()
-
-  console.log('bestOrder', bestOrder)
-
   return (
     <SwapUIV2.SwapFormWrapper>
       <SwapUIV2.SwapTabAndInputPanelWrapper>

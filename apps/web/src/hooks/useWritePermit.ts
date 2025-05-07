@@ -14,8 +14,8 @@ import { useSignTypedData, useWalletClient } from 'wagmi'
 import useAccountActiveChain from './useAccountActiveChain'
 import { useIsSmartContract } from './useIsSmartContract'
 
-const useAllowanceTransferPermit = () => {
-  const { account, chainId } = useAccountActiveChain()
+const useAllowanceTransferPermit = (chainId: number) => {
+  const { account } = useAccountActiveChain()
   const { data: walletClient } = useWalletClient()
 
   return useCallback(
@@ -41,10 +41,10 @@ const useAllowanceTransferPermit = () => {
   )
 }
 
-export const useWritePermit = (token?: Token, spender?: Address, nonce?: number) => {
-  const { account, chainId } = useAccountActiveChain()
+export const useWritePermit = (token?: Token, spender?: Address, nonce?: number, chainId?: number) => {
+  const { account } = useAccountActiveChain()
   const { signTypedDataAsync } = useSignTypedData()
-  const scWritePermit = useAllowanceTransferPermit()
+  const scWritePermit = useAllowanceTransferPermit(chainId!)
   const isSC = useIsSmartContract(account)
 
   return useCallback(async (): Promise<Permit2Signature> => {

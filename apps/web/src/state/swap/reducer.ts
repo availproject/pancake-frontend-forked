@@ -72,8 +72,7 @@ const reducer = createReducer<SwapState>(initialState, (builder) =>
           },
         },
       ) => {
-        // something is going wrong here, I am sending currency id but inside the fn we are comparing symbol
-        const inputSwapOrder = buildSwapOrder(inputCurrencyId, inputCurrencyChainId)
+        const inputSwapOrder = buildSwapOrder(inputCurrencyId, inputCurrencyChainId, Field.INPUT)
         return {
           [Field.INPUT]: {
             currencyId: inputSwapOrder?.inputCurrencyId,
@@ -95,11 +94,11 @@ const reducer = createReducer<SwapState>(initialState, (builder) =>
     )
     .addCase(selectCurrency, (state, { payload: { currencyId, chainId, field } }) => {
       const otherField = field === Field.INPUT ? Field.OUTPUT : Field.INPUT
-      const currentSwapOrder = buildSwapOrder(currencyId, chainId)
+      const currentSwapOrder = buildSwapOrder(currencyId, chainId, field)
 
       if (currencyId === state[otherField].currencyId) {
         // If currencies would be the same, we swap them
-        const otherSwapOrder = buildSwapOrder(state[field].currencyId, state[field].chainId)
+        const otherSwapOrder = buildSwapOrder(state[field].currencyId, state[field].chainId, field)
         return {
           ...state,
           independentField: state.independentField === Field.INPUT ? Field.OUTPUT : Field.INPUT,
@@ -118,8 +117,9 @@ const reducer = createReducer<SwapState>(initialState, (builder) =>
       return {
         ...state,
         [field]: {
-          currencyId: currentSwapOrder?.inputCurrencyId,
-          chainId: currentSwapOrder?.inputCurrencyChainId,
+          currencyId: field === Field.INPUT ? currentSwapOrder?.inputCurrencyId : currentSwapOrder?.outputCurrencyId,
+          chainId:
+            field === Field.INPUT ? currentSwapOrder?.inputCurrencyChainId : currentSwapOrder?.outputCurrencyChainId,
           displayCurrencyId: state[field].displayCurrencyId,
         },
       }

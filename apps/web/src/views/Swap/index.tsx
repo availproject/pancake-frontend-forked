@@ -36,7 +36,7 @@ export default function Swap() {
     [Field.OUTPUT]: { currencyId: outputCurrencyId, chainId: outputCurrencyChainId },
   } = useSwapState()
   const inputCurrency = useCurrency(inputCurrencyId, inputCurrencyChainId)
-  const outputCurrency = useCurrency(outputCurrencyId, outputCurrencyChainId)
+  const outputCurrency = useCurrency(outputCurrencyId, inputCurrencyChainId)
 
   const currencies: { [field in Field]?: Currency } = {
     [Field.INPUT]: inputCurrency ?? undefined,

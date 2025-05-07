@@ -263,7 +263,6 @@ export function useFeeDataWithGasPrice(chainIdOverride?: number): {
 } {
   const { chainId: chainId_ } = useActiveChainId()
   const chainId = chainIdOverride ?? ChainId.ARBITRUM_ONE
-  console.log('useFeeDataWithGasPrice', { chainId })
   const gasPrice = useGasPrice(chainId)
   const { data } = useFeeData({
     chainId,

@@ -5,7 +5,6 @@ import { FAST_INTERVAL } from 'config/constants'
 import { useCallback, useMemo } from 'react'
 import { publicClient } from 'utils/wagmi'
 import { Address, zeroAddress } from 'viem'
-import { useActiveChainId } from './useActiveChainId'
 
 export type Permit2Details = {
   // the maximum amount allowed to spend
@@ -20,8 +19,8 @@ export const usePermit2Details = (
   owner: Address | undefined,
   token: Token | undefined,
   spender: Address | undefined,
+  chainId: number,
 ) => {
-  const { chainId } = useActiveChainId()
   const inputs = useMemo<[Address, Address, Address]>(
     () => [owner ?? zeroAddress, token?.address ?? zeroAddress, spender ?? zeroAddress],
     [owner, spender, token?.address],

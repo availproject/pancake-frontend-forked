@@ -7,7 +7,9 @@ import useNativeCurrency from 'hooks/useNativeCurrency'
 import { styled } from 'styled-components'
 
 import { SUGGESTED_BASES } from 'config/constants/exchange'
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { Field } from 'state/swap/actions'
+import { useSwapState } from 'state/swap/hooks'
 import { AutoRow } from '../Layout/Row'
 import { CommonBasesType } from './types'
 
@@ -57,7 +59,7 @@ const ConfirmButtonWrapper = styled.div`
 `
 
 export const SUPPORTED_CHAIN_IDS = [ChainId.BASE, ChainId.ARBITRUM_ONE]
-const SUPPORTED_TOKENS = [...SUGGESTED_BASES[ChainId.ARBITRUM_ONE]]
+const SUPPORTED_TOKENS = [...SUGGESTED_BASES[ChainId.ARBITRUM_ONE], ...SUGGESTED_BASES[ChainId.BASE]]
 
 export default function CommonBases({
   chainId,
@@ -75,6 +77,9 @@ export default function CommonBases({
   const native = useNativeCurrency()
   const [selectedToken, setSelectedToken] = useState(selectedCurrency ?? native?.wrapped)
   const [selectedNewChainId, setSelectedNewChainId] = useState<ChainId | null | undefined>(selectedChainId)
+  const {
+    [Field.INPUT]: { chainId: inputCurrencyChainId },
+  } = useSwapState()
 
   const { t } = useTranslation()
   const pinTokenDescText = commonBasesType === CommonBasesType.SWAP_LIMITORDER ? t('Select token') : t('Common bases')
@@ -94,6 +99,10 @@ export default function CommonBases({
     }
   }, [selectedToken, selectedNewChainId, onSelect])
 
+  const filterSupportedTokens = useMemo(() => {
+    return SUPPORTED_TOKENS.filter((token) => token.chainId === (inputCurrencyChainId ?? ChainId.ARBITRUM_ONE))
+  }, [inputCurrencyChainId])
+
   return (
     <AutoColumn gap="lg">
       <AutoRow>
@@ -105,7 +114,7 @@ export default function CommonBases({
         )}
       </AutoRow>
       <RowWrapper>
-        {SUPPORTED_TOKENS.map((token) => {
+        {filterSupportedTokens.map((token) => {
           const selected = selectedToken?.equals(token)
           return (
             <ButtonWrapper key={`buttonBase#${token.name}`}>

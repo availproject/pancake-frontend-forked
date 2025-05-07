@@ -27,7 +27,7 @@ interface IntentRequestData {
   refresh: () => void
 }
 
-interface AllowanceModalTrigger {
+export interface AllowanceModalTrigger {
   data: AllowanceRequestData
   resolve: (allowances: any[]) => void
   reject: (reason?: any) => void
@@ -140,8 +140,6 @@ const ArcanaProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
       }
       try {
         await ca.bridge().token(tokenSymbol).amount(amount).chain(targetChainId).exec()
-        // const updatedAmount = await waitForBalanceUpdate(ca, tokenSymbol, targetChainId, new Decimal(amount))
-        // callback?.(updatedAmount?.balanceStr ?? amount)
       } catch (bridgeError) {
         console.error('Bridge failed:', bridgeError)
         throw bridgeError

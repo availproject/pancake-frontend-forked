@@ -36,8 +36,10 @@ export function useSwapCallArguments(
   permitSignature: Permit2Signature | undefined,
   deadline: bigint | undefined,
   feeOptions: FeeOptions | undefined,
+  inputCurrencyChainId: number | undefined,
 ): SwapCall[] {
-  const { account, chainId } = useAccountActiveChain()
+  const { account, chainId: chainId_ } = useAccountActiveChain()
+  const chainId = inputCurrencyChainId ?? chainId_
   const recipientENSAddress = useGetENSAddressByName(recipientAddressOrName ?? undefined)
   const recipient = (
     recipientAddressOrName === null || recipientAddressOrName === undefined

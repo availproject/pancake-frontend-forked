@@ -26,8 +26,8 @@ export const useSwapCurrency = (): [
 ] => {
   const [inputCurrencyId, outputCurrencyId, inputCurrencyChainId, outputCurrencyChainId] = useSwapCurrencyIds()
 
-  const inputCurrency = useCurrency(inputCurrencyId) as Currency
-  const outputCurrency = useCurrency(outputCurrencyId) as Currency
+  const inputCurrency = useCurrency(inputCurrencyId, inputCurrencyChainId) as Currency
+  const outputCurrency = useCurrency(outputCurrencyId, inputCurrencyChainId) as Currency
 
   return [inputCurrency, outputCurrency, inputCurrencyChainId, outputCurrencyChainId]
 }

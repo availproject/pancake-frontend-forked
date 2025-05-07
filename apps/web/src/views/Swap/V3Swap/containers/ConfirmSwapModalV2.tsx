@@ -1,11 +1,10 @@
 import { useTranslation } from '@pancakeswap/localization'
-import { ChainId, Currency, CurrencyAmount, Token, TradeType } from '@pancakeswap/sdk'
+import { Currency, CurrencyAmount, Token, TradeType } from '@pancakeswap/sdk'
 import { useCallback, useMemo } from 'react'
 
 import { WrappedTokenInfo } from '@pancakeswap/token-lists'
-import { Box, BscScanIcon, Flex, InjectedModalProps, Link } from '@pancakeswap/uikit'
+import { Box, Flex, InjectedModalProps } from '@pancakeswap/uikit'
 import { formatAmount } from '@pancakeswap/utils/formatFractions'
-import truncateHash from '@pancakeswap/utils/truncateHash'
 import {
   ApproveModalContent,
   ConfirmModalState,
@@ -17,15 +16,14 @@ import { useActiveChainId } from 'hooks/useActiveChainId'
 import { useAutoSlippageWithFallback } from 'hooks/useAutoSlippageWithFallback'
 import { Field } from 'state/swap/actions'
 import { useSwapState } from 'state/swap/hooks'
-import { getBlockExploreLink, getBlockExploreName } from 'utils'
 import { wrappedCurrency } from 'utils/wrappedCurrency'
 import ConfirmSwapModalContainer from 'views/Swap/components/ConfirmSwapModalContainer'
 import { SwapTransactionErrorContent } from 'views/Swap/components/SwapTransactionErrorContent'
 
-import { IntentModalTrigger } from 'contexts/ArcanaProvider'
+import { AllowanceModalTrigger, IntentModalTrigger } from 'contexts/ArcanaProvider'
 import { Hash } from 'viem'
 import { InterfaceOrder, isXOrder } from 'views/Swap/utils'
-import ArcanaIntentContent from 'views/SwapSimplify/V4Swap/ArcanaIntentContent'
+import ArcanaIntentContent, { ArcanaAllowanceContent } from 'views/SwapSimplify/V4Swap/ArcanaIntentContent'
 import { TransactionConfirmSwapContentV2 } from '../components/TransactionConfirmSwapContentV2'
 import { useSlippageAdjustedAmounts } from '../hooks'
 import { ConfirmAction } from '../hooks/useConfirmModalState'
@@ -53,6 +51,7 @@ type ConfirmSwapModalV2Props = InjectedModalProps & {
   confirmModalState: ConfirmModalState
   pendingModalSteps: ConfirmAction[]
   intentModal: IntentModalTrigger | null
+  allowanceModal: AllowanceModalTrigger | null
   order?: InterfaceOrder | null
   originalOrder?: InterfaceOrder | null
   currencyBalances?: { [field in Field]?: CurrencyAmount<Currency> }
@@ -79,6 +78,7 @@ export const ConfirmSwapModalV2: React.FC<ConfirmSwapModalV2Props> = ({
   onAcceptChanges,
   onConfirm,
   intentModal,
+  allowanceModal,
 }) => {
   const { t } = useTranslation()
   const { chainId } = useActiveChainId()
@@ -166,6 +166,9 @@ export const ConfirmSwapModalV2: React.FC<ConfirmSwapModalV2Props> = ({
     if (intentModal) {
       return <ArcanaIntentContent intentModal={intentModal} />
     }
+    if (allowanceModal) {
+      return <ArcanaAllowanceContent allowanceModal={allowanceModal} />
+    }
 
     if (confirmModalState === ConfirmModalState.BRIDGING_IN || confirmModalState === ConfirmModalState.BRIDGING_OUT) {
       const title =
@@ -251,18 +254,7 @@ export const ConfirmSwapModalV2: React.FC<ConfirmSwapModalV2Props> = ({
 
     if (confirmModalState === ConfirmModalState.COMPLETED && txHash) {
       return (
-        <SwapTransactionReceiptModalContent
-          explorerLink={
-            chainId ? (
-              <Link external small href={getBlockExploreLink(txHash, 'transaction', chainId)}>
-                {t('View on %site%', { site: getBlockExploreName(chainId) })}: {truncateHash(txHash, 8, 0)}
-                {chainId === ChainId.BSC && <BscScanIcon color="primary" ml="4px" />}
-              </Link>
-            ) : (
-              <></>
-            )
-          }
-        >
+        <SwapTransactionReceiptModalContent explorerLink={<></>}>
           {showAddToWalletButton && (
             <AddToWalletButton
               mt="39px"
