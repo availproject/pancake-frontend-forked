@@ -1,11 +1,9 @@
 import { CA } from '@arcana/ca-sdk'
-import { ChainId } from '@pancakeswap/chains'
 import { useTranslation } from '@pancakeswap/localization'
 import {
   Box,
   Flex,
   LogoutIcon,
-  RefreshIcon,
   UserMenu as UIKitUserMenu,
   UserMenuDivider,
   UserMenuItem,
@@ -13,33 +11,25 @@ import {
   useModal,
 } from '@pancakeswap/uikit'
 import ConnectWalletButton from 'components/ConnectWalletButton'
-import useAirdropModalStatus from 'components/GlobalCheckClaimStatus/hooks/useAirdropModalStatus'
 import Trans from 'components/Trans'
 import { useArcana } from 'contexts/ArcanaProvider'
 import { useActiveChainId } from 'hooks/useActiveChainId'
 import useAuth from 'hooks/useAuth'
 import { useDomainNameForAddress } from 'hooks/useDomain'
-import NextLink from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { useProfile } from 'state/profile/hooks'
-import { usePendingTransactions } from 'state/transactions/hooks'
 import { useAccount } from 'wagmi'
-import ClaimYourNFT from './ClaimYourNFT'
-import ProfileUserMenuItem from './ProfileUserMenuItem'
 import WalletModal, { WalletView } from './WalletModal'
 import WalletUserMenuItem from './WalletUserMenuItem'
 
 const UserMenuItems = ({ ca }: { ca: CA | null }) => {
   const { t } = useTranslation()
-  const { chainId, isWrongNetwork } = useActiveChainId()
+  const { isWrongNetwork } = useActiveChainId()
   const { logout } = useAuth()
-  const { address: account } = useAccount()
-  const { hasPendingTransactions } = usePendingTransactions()
-  const { isInitialized, isLoading, profile } = useProfile()
-  const { shouldShowModal } = useAirdropModalStatus()
+  const { isInitialized, profile } = useProfile()
 
   const [onPresentWalletModal] = useModal(<WalletModal initialView={WalletView.WALLET_INFO} ca={ca} />)
-  const [onPresentTransactionModal] = useModal(<WalletModal initialView={WalletView.TRANSACTIONS} ca={ca} />)
+
   const [onPresentWrongNetworkModal] = useModal(<WalletModal initialView={WalletView.WRONG_NETWORK} ca={ca} />)
   const hasProfile = isInitialized && !!profile
 
@@ -54,20 +44,9 @@ const UserMenuItems = ({ ca }: { ca: CA | null }) => {
   return (
     <>
       <WalletUserMenuItem isWrongNetwork={isWrongNetwork} onPresentWalletModal={onClickWalletMenu} />
-      <UserMenuItem as="button" disabled={isWrongNetwork} onClick={onPresentTransactionModal}>
-        {t('Recent Transactions')}
-        {hasPendingTransactions && <RefreshIcon spin />}
-      </UserMenuItem>
+
       <UserMenuDivider />
-      <NextLink href={`/profile/${account?.toLowerCase()}`} passHref>
-        <UserMenuItem disabled={isWrongNetwork || chainId !== ChainId.BSC}>{t('Your NFTs')}</UserMenuItem>
-      </NextLink>
-      {shouldShowModal && <ClaimYourNFT />}
-      <ProfileUserMenuItem
-        isLoading={isLoading}
-        hasProfile={hasProfile}
-        disabled={isWrongNetwork || chainId !== ChainId.BSC}
-      />
+
       <UserMenuDivider />
       <UserMenuItem as="button" onClick={logout}>
         <Flex alignItems="center" justifyContent="space-between" width="100%">
@@ -84,22 +63,12 @@ const UserMenu = () => {
   const { address: account } = useAccount()
   const { domainName, avatar } = useDomainNameForAddress(account)
   const { isWrongNetwork } = useActiveChainId()
-  const { hasPendingTransactions, pendingNumber } = usePendingTransactions()
+
   const { profile } = useProfile()
   const avatarSrc = profile?.nft?.image?.thumbnail ?? avatar
   const [userMenuText, setUserMenuText] = useState<string>('')
   const [userMenuVariable, setUserMenuVariable] = useState<UserMenuVariant>('default')
   const { ca, initArcana } = useArcana()
-
-  useEffect(() => {
-    if (hasPendingTransactions) {
-      setUserMenuText(t('%num% Pending', { num: pendingNumber }))
-      setUserMenuVariable('pending')
-    } else {
-      setUserMenuText('')
-      setUserMenuVariable('default')
-    }
-  }, [hasPendingTransactions, pendingNumber, t])
 
   useEffect(() => {
     if (!ca && account) {

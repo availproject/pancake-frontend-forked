@@ -260,28 +260,6 @@ const useConfirmActions = (
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined)
   const { toastSuccess, toastError } = useToast()
   const { switchNetworkAsync } = useSwitchNetwork()
-  const { chainId: currentWalletChainId } = useAccount()
-
-  const switchNetwork = useCallback(async () => {
-    if (currentWalletChainId !== inputCurrencyChainId) {
-      try {
-        console.log(
-          `Requesting chain switch to: ${inputCurrencyChainId} for permit. Wallet currently on: ${currentWalletChainId}`,
-        )
-        // Await the asynchronous network switch
-        await switchNetworkAsync(inputCurrencyChainId!)
-        console.log(`Successfully switched wallet chain to ${inputCurrencyChainId}`)
-      } catch (error) {
-        console.error(`Failed to switch chain to ${inputCurrencyChainId}:`, error)
-        const isUserRejection = userRejectedError(error) || (error as any)?.message?.includes('User rejected')
-        if (isUserRejection) {
-          showError(t('Chain switch rejected by user.'))
-        } else {
-          showError(t('Failed to switch network.'))
-        }
-      }
-    }
-  }, [currentWalletChainId, inputCurrencyChainId, switchNetworkAsync, t])
 
   const resetState = useCallback(() => {
     setConfirmState(ConfirmModalState.REVIEWING)
@@ -398,8 +376,6 @@ const useConfirmActions = (
       action: async (nextState?: ConfirmModalState) => {
         setConfirmState(ConfirmModalState.PERMITTING)
         try {
-          switchNetwork()
-
           const permitOutcome = await permit()
 
           if (!permitOutcome || !permitOutcome.signature || !permitOutcome.details) {
@@ -491,7 +467,6 @@ const useConfirmActions = (
         })
 
         try {
-          // switchNetwork()
           const result = await approve()
           if (result?.hash && chainId) {
             const hash = await safeTxHashTransformer(result.hash)
@@ -556,7 +531,6 @@ const useConfirmActions = (
       action: async (nextState?: ConfirmModalState) => {
         setTxHash(undefined)
         setConfirmState(ConfirmModalState.PENDING_CONFIRMATION)
-        // switchNetwork()
         if (!swap) {
           resetState()
           return
@@ -734,8 +708,13 @@ const useConfirmActions = (
         setConfirmState(ConfirmModalState.BRIDGING_OUT)
         try {
           if (!ca) throw new Error('Arcana client not initialized')
-          const outputTokenSymbol = order?.trade?.outputAmount?.currency?.symbol ?? ''
+          const outputTokenSymbol = order?.trade?.outputAmount?.currency?.symbol.includes('USDC') ? 'USDC' : 'USDT'
           console.log('Bridge out step', { order, bridgeOutAmount: bridgeOutAmount.current })
+          console.log('Bridge out step params', {
+            tokenSymbol: outputTokenSymbol,
+            amount: bridgeOutAmount.current,
+            targetChainId: outputCurrencyChainId ?? 0,
+          })
           await arcanaBridge({
             tokenSymbol: outputTokenSymbol,
             amount: bridgeOutAmount.current,
@@ -837,7 +816,7 @@ export const useConfirmModalState = (
       if (!stepActions) {
         return
       }
-      await switchNetworkAsync(inputCurrencyChainId!)
+
       console.log(
         `Starting step: ${nextStep}, Swap Input ChainID: ${inputCurrencyChainId}, Wallet Active ChainID: ${walletChainNow}`,
       )
@@ -851,7 +830,7 @@ export const useConfirmModalState = (
 
   const callToAction = useCallback(async () => {
     const steps = await createSteps()
-
+    await switchNetworkAsync(inputCurrencyChainId!)
     setConfirmSteps(steps)
     const stepActions = steps.map((step) => actions[step])
     const nextStep = steps[1] ?? undefined

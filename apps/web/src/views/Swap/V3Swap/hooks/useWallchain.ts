@@ -18,6 +18,8 @@ import { useWalletClient } from 'wagmi'
 import { ClassicOrder } from '@pancakeswap/price-api-sdk'
 import Bottleneck from 'bottleneck'
 import { WALLCHAIN_ENABLED, WallchainKeys, WallchainTokens } from 'config/wallchain'
+import { Field } from 'state/swap/actions'
+import { useSwapState } from 'state/swap/hooks'
 import { Address, Hex } from 'viem'
 import { useSwapCallArguments } from './useSwapCallArguments'
 
@@ -130,7 +132,9 @@ export function useWallchainApi(
   >(undefined)
   const { data: walletClient } = useWalletClient()
   const { account } = useAccountActiveChain()
-
+  const {
+    [Field.INPUT]: { chainId: inputCurrencyChainId },
+  } = useSwapState()
   const { slippageTolerance: allowedSlippageRaw } = useAutoSlippageWithFallback()
   const allowedSlippage = useMemo(() => basisPointsToPercent(allowedSlippageRaw), [allowedSlippageRaw])
   const [lastUpdate, setLastUpdate] = useState(0)
@@ -138,7 +142,15 @@ export function useWallchainApi(
 
   const sdk = useWallchainSDK()
 
-  const swapCalls = useSwapCallArguments(trade, allowedSlippage, account, undefined, deadline, feeOptions)
+  const swapCalls = useSwapCallArguments(
+    trade,
+    allowedSlippage,
+    account,
+    undefined,
+    deadline,
+    feeOptions,
+    inputCurrencyChainId,
+  )
 
   useEffect(() => {
     if (!sdk || !walletClient || !trade || !account || useUniversalRouter) {

@@ -287,7 +287,7 @@ const CurrencyInputPanelSimplify = memo(function CurrencyInputPanel({
       if (fetchInterval.current) {
         fetchBalances()
       }
-    }, 10000)
+    }, 5000)
 
     return () => clearInterval(interval)
   }, [ca, account, fetchInterval])
