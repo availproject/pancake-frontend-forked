@@ -29,14 +29,14 @@ interface SwapOrder {
 
 // Helper function to check if a currency identifier matches a specific token type (USDT or USDC) on its chain
 const isTokenOfType = (
-  identifier: string | undefined, // User's selected currency ID in UI (symbol or address)
-  selectedChainId: ChainId | undefined, // Chain of the user's selection in UI
+  identifier: string | undefined,
+  selectedChainId: ChainId | undefined,
   expectedTokenType: 'USDT' | 'USDC',
 ): boolean => {
   if (!identifier || selectedChainId === undefined) return false
 
   const tokenMap = expectedTokenType === 'USDT' ? USDT : USDC
-  const targetTokenDefinition = tokenMap[selectedChainId] as Token | undefined // Type assertion if your map returns a more general type
+  const targetTokenDefinition = tokenMap[selectedChainId] as Token | undefined
 
   if (!targetTokenDefinition) return false
 
@@ -52,12 +52,6 @@ export const buildSwapOrder = (
   selectedChainIdInUI: ChainId | undefined,
   independentField: Field,
 ): SwapOrder | undefined => {
-  console.log('buildSwapOrder CALLED WITH:', {
-    selectedCurrencyIdInUI,
-    selectedChainIdInUI,
-    independentField,
-  })
-
   if (!selectedCurrencyIdInUI || selectedChainIdInUI === undefined) {
     console.warn('buildSwapOrder: Missing selectedCurrencyIdInUI or selectedChainIdInUI')
     return undefined
@@ -74,7 +68,6 @@ export const buildSwapOrder = (
     }
 
     if (isTokenOfType(selectedCurrencyIdInUI, swapChainId, 'USDT')) {
-      // User selected USDT as input on swapChainId
       return {
         inputCurrencyId: usdtOnThisChain.address,
         inputCurrencyChainId: swapChainId,
@@ -83,7 +76,6 @@ export const buildSwapOrder = (
       }
     }
     if (isTokenOfType(selectedCurrencyIdInUI, swapChainId, 'USDC')) {
-      // User selected USDC as input on swapChainId
       return {
         inputCurrencyId: usdcOnThisChain.address,
         inputCurrencyChainId: swapChainId,
@@ -112,7 +104,6 @@ export const buildSwapOrder = (
         }
       }
       if (isTokenOfType(selectedCurrencyIdInUI, swapChainId, 'USDC')) {
-        // User selected USDC as input on swapChainId
         return {
           inputCurrencyId: baseUsdt.address,
           inputCurrencyChainId: ChainId.BASE,
@@ -137,7 +128,6 @@ export const buildSwapOrder = (
         }
       }
       if (isTokenOfType(selectedCurrencyIdInUI, swapChainId, 'USDC')) {
-        // User selected USDC as input on swapChainId
         return {
           inputCurrencyId: arbitrumUsdt.address,
           inputCurrencyChainId: ChainId.ARBITRUM_ONE,

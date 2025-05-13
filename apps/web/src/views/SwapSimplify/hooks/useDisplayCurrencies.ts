@@ -15,7 +15,6 @@ export function useDisplayCurrencies(): {
     [Field.OUTPUT]: { displayCurrencyId: outputDisplayCurrencyId, currencyId: outputCurrencyId },
   } = useSwapState()
 
-  // For UI display, use displayCurrencyId if available, otherwise fall back to actual currencyId
   const inputCurrency = useCurrency(inputDisplayCurrencyId ?? inputCurrencyId)
   const outputCurrency = useCurrency(outputDisplayCurrencyId ?? outputCurrencyId)
 

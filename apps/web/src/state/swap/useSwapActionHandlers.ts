@@ -35,7 +35,6 @@ export function useSwapActionHandlers(activeChainId?: ChainId): {
 
   const onCurrencySelection = useCallback((field: Field, currency?: Currency, chainId?: ChainId) => {
     // Set the display currency
-    console.log('onCurrencySelection', { field, currency, chainId })
     const associatedCurrency = CURRENCY_MAP[ChainId.LINEA]?.[currency?.symbol ?? '']
     dispatch(
       setDisplayCurrency({

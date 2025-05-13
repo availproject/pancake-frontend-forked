@@ -1,22 +1,5 @@
 import { CA } from '@arcana/ca-sdk'
-import React, { createContext, Dispatch, SetStateAction, useCallback, useContext, useMemo, useState } from 'react'
-
-export type ArcanaBridgingState =
-  | 'idle'
-  | 'pending'
-  | 'bridging_in'
-  | 'swapping'
-  | 'bridging_out'
-  | 'success'
-  | 'error'
-  | 'checking_chains'
-  | 'fetching_quote'
-  | 'waiting_for_swap_trigger'
-  | 'waiting_for_balance_update'
-  | 'updating_swap_input'
-  | 'waiting_for_second_bridge'
-  | 'second_bridge_pending'
-  | 'second_bridge_success'
+import React, { createContext, useCallback, useContext, useMemo, useState } from 'react'
 
 interface AllowanceRequestData {
   sources: any[]
@@ -43,19 +26,14 @@ export interface ArcanaBridgeProps {
   tokenSymbol: string
   amount: string
   targetChainId: number
-  callback: (updatedAmount: string) => void
 }
 
 interface ArcanaContextType {
   ca: CA | null
   isLoading: boolean
   error: Error | null
-  bridgingState: ArcanaBridgingState
-  setBridgingState: Dispatch<SetStateAction<ArcanaBridgingState>>
   allowanceModal: AllowanceModalTrigger | null
-  setAllowanceModal: Dispatch<SetStateAction<AllowanceModalTrigger | null>>
   intentModal: IntentModalTrigger | null
-  setIntentModal: Dispatch<SetStateAction<IntentModalTrigger | null>>
   initArcana: () => Promise<void>
   arcanaBridge: (props: ArcanaBridgeProps) => Promise<void>
 }
@@ -66,7 +44,6 @@ const ArcanaProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [ca, setCa] = useState<CA | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
-  const [bridgingState, setBridgingState] = useState<ArcanaBridgingState>('idle')
   const [allowanceModal, setAllowanceModal] = useState<AllowanceModalTrigger | null>(null)
   const [intentModal, setIntentModal] = useState<IntentModalTrigger | null>(null)
 
@@ -134,7 +111,7 @@ const ArcanaProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
   }, [setAllowanceModal, setIntentModal])
 
   const arcanaBridge = useCallback(
-    async ({ tokenSymbol, amount, targetChainId, callback }: ArcanaBridgeProps) => {
+    async ({ tokenSymbol, amount, targetChainId }: ArcanaBridgeProps) => {
       if (!ca) {
         throw new Error('Arcana client not found')
       }
@@ -153,16 +130,12 @@ const ArcanaProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
       ca,
       isLoading,
       error,
-      bridgingState,
-      setBridgingState,
       allowanceModal,
-      setAllowanceModal,
       intentModal,
-      setIntentModal,
       initArcana,
       arcanaBridge,
     }),
-    [ca, isLoading, error, bridgingState, allowanceModal, intentModal],
+    [ca, isLoading, error, allowanceModal, intentModal],
   )
 
   return <ArcanaContext.Provider value={contextValue}>{children}</ArcanaContext.Provider>

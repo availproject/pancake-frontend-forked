@@ -221,7 +221,7 @@ const SwapCommitButtonInner = memo(function SwapCommitButtonInner({
     () => (isClassicOrder(order) && !((order.trade?.routes?.length ?? 0) > 0)) || hasNoValidRouteError,
     [order, hasNoValidRouteError],
   )
-  // const isValid = useMemo(() => !swapInputError && !tradeLoading, [swapInputError, tradeLoading])
+
   const isValid = useMemo(() => !tradeLoading, [tradeLoading])
   const disabled = useMemo(
     () => !isValid || (priceImpactSeverity > 3 && !isExpertMode) || isRecipientEmpty || isRecipientError,

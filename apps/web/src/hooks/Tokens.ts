@@ -221,11 +221,8 @@ export function useToken(tokenAddress?: string, chainId?: number): ERC20Token | 
   const { chainId: activeChainId } = useActiveChainId()
   return useTokenByChainId(tokenAddress, chainId ?? activeChainId)
 }
-// undefined if invalid or does not exist
-// null if loading
-// otherwise returns the token
+
 export function useTokenByChainId(tokenAddress?: string, chainId?: number): ERC20Token | undefined | null {
-  // console.log('useTokenByChainId', { tokenAddress, chainId })
   const unsupportedTokens = useUnsupportedTokens()
   const tokens = useAllTokensByChainIds(chainId ? [chainId] : [])
 

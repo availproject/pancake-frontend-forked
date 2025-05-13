@@ -109,7 +109,6 @@ const useCreateConfirmSteps = (
 
   const shouldSkipBridge = useCallback(async () => {
     if (!inputCurrencyChainId || !account || !order?.trade?.inputAmount) {
-      console.log('shouldSkipBridge: Missing required data, defaulting to not skip.')
       return false
     }
     const tokenForBalanceCheck = order.trade.inputAmount.currency
@@ -120,20 +119,14 @@ const useCreateConfirmSteps = (
       const requiredAmountNum = parseFloat(requiredAmountStr)
 
       if (Number.isNaN(onChainBalanceNum) || Number.isNaN(requiredAmountNum)) {
-        console.warn('shouldSkipBridge: Could not parse amounts to numbers for comparison. Defaulting to not skip.')
         return false
       }
 
-      console.log('shouldSkipBridge: Comparing balance:', onChainBalanceNum, 'with required:', requiredAmountNum)
-
       if (onChainBalanceNum >= requiredAmountNum) {
-        console.log('shouldSkipBridge: Balance is sufficient. SKIPPING bridge.')
         return true
       }
-      console.log('shouldSkipBridge: Balance is NOT sufficient. DOING bridge.')
       return false
     } catch (error) {
-      console.error('shouldSkipBridge: Error during amount comparison:', error)
       return false
     }
   }, [inputCurrencyChainId, account, order])
@@ -218,7 +211,6 @@ const useConfirmActions = (
         args: [userAddress],
       })
       const finalBalance = CurrencyAmount.fromRawAmount(token, balance).toExact()
-      console.log('UPDATED BALANCE', finalBalance)
       if (updateOutputAmount) {
         bridgeOutAmount.current =
           finalBalance > order?.trade?.outputAmount.toExact() ? order?.trade?.outputAmount.toExact() : finalBalance
@@ -461,7 +453,7 @@ const useConfirmActions = (
       action: async (nextState?: ConfirmModalState) => {
         setTxHash(undefined)
         setConfirmState(ConfirmModalState.APPROVING_TOKEN)
-        console.log('approveStep', {
+        console.info('approveStep', {
           connectedChain: chainId === ChainId.ARBITRUM_ONE,
           order,
         })
@@ -666,19 +658,15 @@ const useConfirmActions = (
       step: ConfirmModalState.BRIDGING_IN,
       action: async (nextState?: ConfirmModalState) => {
         setConfirmState(ConfirmModalState.BRIDGING_IN)
-        console.log('bridgeInStep', order)
+        console.info('bridgeInStep', order)
         try {
           if (!ca) throw new Error('Arcana client not initialized')
-          console.log('Bridge in step', { order })
           const inputTokenSymbol = order?.trade?.inputAmount?.currency?.symbol ?? ''
 
           await arcanaBridge({
             tokenSymbol: inputTokenSymbol,
             amount: order?.trade?.inputAmount?.toExact() ?? '',
             targetChainId: inputCurrencyChainId ?? 0,
-            callback: (updatedAmount) => {
-              console.log('Bridge in completed with amount:', updatedAmount)
-            },
           })
 
           if (nextState && inputCurrencyChainId && account) {
@@ -693,8 +681,6 @@ const useConfirmActions = (
           } else {
             showError(typeof error === 'string' ? error : (error as any)?.message)
           }
-        } finally {
-          console.log('updated order in bridge in step', order)
         }
       },
       showIndicator: true,
@@ -709,19 +695,10 @@ const useConfirmActions = (
         try {
           if (!ca) throw new Error('Arcana client not initialized')
           const outputTokenSymbol = order?.trade?.outputAmount?.currency?.symbol.includes('USDC') ? 'USDC' : 'USDT'
-          console.log('Bridge out step', { order, bridgeOutAmount: bridgeOutAmount.current })
-          console.log('Bridge out step params', {
-            tokenSymbol: outputTokenSymbol,
-            amount: bridgeOutAmount.current,
-            targetChainId: outputCurrencyChainId ?? 0,
-          })
           await arcanaBridge({
             tokenSymbol: outputTokenSymbol,
             amount: bridgeOutAmount.current,
             targetChainId: outputCurrencyChainId ?? 0,
-            callback: (updatedAmount) => {
-              console.log('Bridge out completed with amount:', updatedAmount)
-            },
           })
           await switchNetworkAsync(ChainId.LINEA)
           setConfirmState(ConfirmModalState.COMPLETED)
@@ -816,11 +793,6 @@ export const useConfirmModalState = (
       if (!stepActions) {
         return
       }
-
-      console.log(
-        `Starting step: ${nextStep}, Swap Input ChainID: ${inputCurrencyChainId}, Wallet Active ChainID: ${walletChainNow}`,
-      )
-
       const step = stepActions.find((s) => s.step === state) ?? stepActions[0]
 
       await step.action(nextStep)

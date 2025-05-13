@@ -16,7 +16,6 @@ export const ArcanaAllowanceContent = ({ allowanceModal }: { allowanceModal: any
             [`${source.chainID}-${source.token.contractAddress}`]: String(source.minAllowance) || 'min',
           }
         }
-        // Fallback or error handling if token structure is not as expected
         console.warn('Source token or contractAddress is missing:', source)
         return acc
       }, {})
@@ -36,9 +35,9 @@ export const ArcanaAllowanceContent = ({ allowanceModal }: { allowanceModal: any
           const choice = allowanceChoices[`${source.chainID}-${source.token.contractAddress}`]
           return choice
         }
-        return undefined // Or handle error appropriately
+        return undefined
       })
-      .filter(Boolean) // Filter out undefined choices if any source was problematic
+      .filter(Boolean)
     console.log('Passing allowances to resolve:', allowances)
     allowanceModal.resolve(allowances)
     toastSuccess(t('Allowances Approved'))
@@ -62,7 +61,6 @@ export const ArcanaAllowanceContent = ({ allowanceModal }: { allowanceModal: any
       <Text mb="16px">{t('The following allowances are required to proceed:')}</Text>
       {Array.isArray(allowanceModalData.sources) &&
         allowanceModalData.sources.map((source) => {
-          // Ensure source.token is an object and has contractAddress and symbol
           if (
             !source.token ||
             typeof source.token !== 'object' ||
@@ -70,7 +68,7 @@ export const ArcanaAllowanceContent = ({ allowanceModal }: { allowanceModal: any
             !source.token.symbol
           ) {
             console.warn('Invalid source token data for rendering:', source)
-            return null // Or render some fallback UI
+            return null
           }
           const sourceKey = `${source.chainID}-${source.token.contractAddress}`
           return (
