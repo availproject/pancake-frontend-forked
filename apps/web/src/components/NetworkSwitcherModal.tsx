@@ -31,21 +31,6 @@ import { chains as evmChains } from 'utils/wagmi'
 import { useAccount } from 'wagmi'
 import { ChainLogo } from './Logo/ChainLogo'
 
-const NON_EVM_CHAINS = [
-  {
-    id: 1,
-    name: 'Aptos',
-    link: 'https://aptos.pancakeswap.finance/swap',
-    image: 'https://aptos.pancakeswap.finance/images/apt.png',
-  },
-  {
-    id: 2,
-    name: 'Solana',
-    link: process.env.SOLANA_SWAP_PAGE ?? 'https://solana.pancakeswap.finance/swap',
-    image: 'https://tokens.pancakeswap.finance/images/symbol/sol.png',
-  },
-]
-
 export const networkSwitcherModalAtom = atom(false)
 
 interface NetworkSelectProps {
@@ -75,9 +60,6 @@ const NetworkSelect = ({ switchNetwork, chainId, isWrongNetwork, onDismiss }: Ne
           .filter((chain) => {
             if (chain.id !== ChainId.LINEA) return false
             if (chain.id === chainId) return true
-            // if ('testnet' in chain && chain.testnet && chain.id !== ChainId.MONAD_TESTNET) {
-            //   return showTestnet
-            // }
             return true
           })
           .map((chain) => (

@@ -32,7 +32,7 @@
     ]
   },
   "dependencies": {
-    "@arcana/ca-wagmi": "^0.0.6",
+    "@arcana/ca-sdk": "0.0.6-beta.11",
     "@binance/w3w-utils": "1.1.4",
     "@binance/w3w-wagmi-connector-v2": "^1.2.3",
     "@cyberlab/cyber-app-sdk": "v3.0.0-beta.5",

@@ -9,6 +9,7 @@ import { ClassicOrder } from '@pancakeswap/price-api-sdk'
 import { Permit2Signature } from '@pancakeswap/universal-router-sdk'
 import useAccountActiveChain from 'hooks/useAccountActiveChain'
 import { useAutoSlippageWithFallback } from 'hooks/useAutoSlippageWithFallback'
+import { Field } from 'state/swap/actions'
 import { Address } from 'viem'
 import useSendSwapTransaction from './useSendSwapTransaction'
 import { useSwapCallArguments } from './useSwapCallArguments'
@@ -47,7 +48,10 @@ export function useSwapCallback({
   feeOptions,
 }: UseSwapCallbackArgs): UseSwapCallbackReturns {
   const { t } = useTranslation()
-  const { account, chainId } = useAccountActiveChain()
+  const { account } = useAccountActiveChain()
+  const {
+    [Field.INPUT]: { chainId: inputCurrencyChainId },
+  } = useSwapState()
   const { slippageTolerance: allowedSlippageRaw } = useAutoSlippageWithFallback()
   const { recipient: recipientAddress } = useSwapState()
   const recipient = recipientAddress === null ? account : recipientAddress
@@ -59,12 +63,19 @@ export function useSwapCallback({
     permitSignature,
     deadline,
     feeOptions,
+    inputCurrencyChainId,
   )
 
-  const { callback } = useSendSwapTransaction(account, chainId, trade ?? undefined, swapCalls, 'UniversalRouter')
+  const { callback } = useSendSwapTransaction(
+    account,
+    inputCurrencyChainId,
+    trade ?? undefined,
+    swapCalls,
+    'UniversalRouter',
+  )
 
   return useMemo(() => {
-    if (!trade || !account || !chainId || !callback) {
+    if (!trade || !account || !inputCurrencyChainId || !callback) {
       return { state: SwapCallbackState.INVALID, error: t('Missing dependencies') }
     }
     if (!recipient) {
@@ -78,5 +89,5 @@ export function useSwapCallback({
       state: SwapCallbackState.VALID,
       callback,
     }
-  }, [trade, account, chainId, callback, recipient, recipientAddress, t])
+  }, [trade, account, inputCurrencyChainId, callback, recipient, recipientAddress, t])
 }

@@ -1,5 +1,7 @@
 import { useTranslation } from '@pancakeswap/localization'
-import { ButtonMenu, ButtonMenuItem } from '@pancakeswap/uikit'
+import { ButtonMenu, ButtonMenuItem, Text, useMatchBreakpoints, useTooltip } from '@pancakeswap/uikit'
+import GlobalSettings from 'components/Menu/GlobalSettings'
+import { useActiveChainId } from 'hooks/useActiveChainId'
 import { useRouter } from 'next/router'
 import { useCallback } from 'react'
 import { styled } from 'styled-components'
@@ -33,9 +35,52 @@ export const SwapSelection = ({ swapType, style }: { swapType: SwapType; style?:
   const { t } = useTranslation()
   const router = useRouter()
 
-  const onSelect = useCallback(() => {
-    router.push('/')
-  }, [router])
+  const onSelect = useCallback(
+    (value: SwapType) => {
+      let url = ''
+      switch (value) {
+        case SwapType.MARKET:
+          url = '/'
+          break
+        default:
+          break
+      }
+      router.push(url)
+    },
+    [router],
+  )
+  const { chainId } = useActiveChainId()
+  const { isMobile } = useMatchBreakpoints()
+
+  const { targetRef, tooltip, tooltipVisible } = useTooltip(
+    <Text>
+      {t(
+        'TWAP (Time-Weighted Average Price) helps minimises market impact from large orders by averaging the asset price over a set time period.',
+      )}
+    </Text>,
+    { placement: 'top' },
+  )
+
+  // NOTE: Commented out until charts are supported again
+  // const { isChartSupported, isChartDisplayed, setIsChartDisplayed, isHotTokenSupported } =
+  //   useContext(SwapFeaturesContext)
+  // const [isSwapHotTokenDisplay, setIsSwapHotTokenDisplay] = useSwapHotTokenDisplay()
+  // const toggleChartDisplayed = () => {
+  //   setIsChartDisplayed?.((currentIsChartDisplayed) => !currentIsChartDisplayed)
+  // }
+
+  const tSwapProps = useMemo(() => {
+    const isTSwapSupported = isTwapSupported(chainId)
+    return {
+      disabled: !isTSwapSupported,
+      style: {
+        cursor: isTSwapSupported ? 'pointer' : 'not-allowed',
+        pointerEvents: isTSwapSupported ? 'auto' : 'none',
+        color: !isTSwapSupported ? 'rgba(0, 0, 0, 0.15)' : undefined,
+        userSelect: 'none',
+      } as React.CSSProperties,
+    }
+  }, [chainId])
 
   return (
     <SwapSelectionWrapper style={style}>
@@ -51,6 +96,15 @@ export const SwapSelection = ({ swapType, style }: { swapType: SwapType; style?:
         <StyledButtonMenuItem>{t('Swap')}</StyledButtonMenuItem>
         <></>
       </ButtonMenu>
+      {withToolkit && (
+        <GlobalSettings
+          color="textSubtle"
+          mr="0"
+          mode={SettingsMode.SWAP_LIQUIDITY}
+          data-dd-action-name="Swap settings button"
+          width="24px"
+        />
+      )}
     </SwapSelectionWrapper>
   )
 }

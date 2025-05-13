@@ -15,6 +15,8 @@ export enum ConfirmModalState {
   PERMITTING,
   PENDING_CONFIRMATION,
   COMPLETED,
+  BRIDGING_IN,
+  BRIDGING_OUT,
 }
 
 export type PendingApproveModalState = Extract<

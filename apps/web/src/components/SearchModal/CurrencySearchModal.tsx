@@ -62,7 +62,6 @@ const StyledModalBody = styled(ModalBody)`
 
 export interface CurrencySearchModalProps extends InjectedModalProps {
   selectedCurrency?: Currency | null
-  selectedChainId?: ChainId | undefined
   onCurrencySelect?: (currency: Currency, chainId?: ChainId) => void
   otherSelectedCurrency?: Currency | null
   showCommonBases?: boolean
@@ -70,7 +69,7 @@ export interface CurrencySearchModalProps extends InjectedModalProps {
   showSearchInput?: boolean
   tokensToShow?: Token[]
   showCurrencyInHeader?: boolean
-  enableChainIdSelect?: boolean
+  selectedChainId?: ChainId
 }
 
 export default function CurrencySearchModal({
@@ -84,18 +83,14 @@ export default function CurrencySearchModal({
   showSearchInput,
   tokensToShow,
   showCurrencyInHeader = false,
-  enableChainIdSelect = false,
+  selectedChainId,
 }: Readonly<CurrencySearchModalProps>) {
   const [modalView, setModalView] = useState<CurrencyModalView>(CurrencyModalView.search)
 
   const handleCurrencySelect = useCallback(
     (currency: Currency, chainId?: ChainId) => {
       onDismiss?.()
-      if (chainId) {
-        onCurrencySelect?.(currency, chainId)
-      } else {
-        onCurrencySelect?.(currency)
-      }
+      onCurrencySelect?.(currency, chainId)
     },
     [onDismiss, onCurrencySelect],
   )
@@ -229,10 +224,15 @@ export default function CurrencySearchModal({
           <CurrencySearch
             onCurrencySelect={handleCurrencySelect}
             selectedCurrency={selectedCurrency}
+            otherSelectedCurrency={otherSelectedCurrency}
             selectedChainId={selectedChainId}
             showCommonBases={showCommonBases}
             commonBasesType={commonBasesType}
-            enableChainIdSelect
+            showSearchInput={false}
+            showImportView={() => setModalView(CurrencyModalView.importToken)}
+            setImportToken={setImportToken}
+            height={height}
+            tokensToShow={tokensToShow}
           />
         ) : modalView === CurrencyModalView.importToken && importToken ? (
           <ImportToken tokens={[importToken]} handleCurrencySelect={handleCurrencySelect} />

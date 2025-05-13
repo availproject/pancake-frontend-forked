@@ -2,6 +2,7 @@ import { Currency } from '@pancakeswap/swap-sdk-core'
 import { AutoColumn, Box, Button, Dots, Message, MessageText, Text, useModal } from '@pancakeswap/uikit'
 import React, { memo, useCallback, useEffect, useMemo, useState } from 'react'
 
+import { ChainId } from '@pancakeswap/chains'
 import { useTranslation } from '@pancakeswap/localization'
 import { PriceOrder } from '@pancakeswap/price-api-sdk'
 import { getUniversalRouterAddress } from '@pancakeswap/universal-router-sdk'
@@ -17,6 +18,7 @@ import {
 } from 'components/Menu/GlobalSettings/SettingsModalV2'
 import { SettingsMode } from 'components/Menu/GlobalSettings/types'
 import { BIG_INT_ZERO } from 'config/constants/exchange'
+import { useArcana } from 'contexts/ArcanaProvider'
 import { useCurrency } from 'hooks/Tokens'
 import { useIsTransactionUnsupported } from 'hooks/Trades'
 import { NoValidRouteError } from 'hooks/useBestAMMTrade'
@@ -30,8 +32,8 @@ import { logGTMClickSwapConfirmEvent, logGTMClickSwapEvent } from 'utils/customG
 import { warningSeverity } from 'utils/exchange'
 import { isClassicOrder, isXOrder } from 'views/Swap/utils'
 import { ConfirmSwapModalV2 } from 'views/Swap/V3Swap/containers/ConfirmSwapModalV2'
-import { useAccount, useChainId } from 'wagmi'
-import { useParsedAmounts, useSlippageAdjustedAmounts, useSwapInputError } from '../../Swap/V3Swap/hooks'
+import { useAccount } from 'wagmi'
+import { useParsedAmounts, useSlippageAdjustedAmounts } from '../../Swap/V3Swap/hooks'
 import { useConfirmModalState } from '../../Swap/V3Swap/hooks/useConfirmModalState'
 import { useSwapConfig } from '../../Swap/V3Swap/hooks/useSwapConfig'
 import { useSwapCurrency } from '../../Swap/V3Swap/hooks/useSwapCurrency'
@@ -58,11 +60,11 @@ const useSettingModal = (onDismiss) => {
 
 const useSwapCurrencies = () => {
   const {
-    [Field.INPUT]: { currencyId: inputCurrencyId },
+    [Field.INPUT]: { currencyId: inputCurrencyId, chainId: inputCurrencyChainId },
     [Field.OUTPUT]: { currencyId: outputCurrencyId },
   } = useSwapState()
-  const inputCurrency = useCurrency(inputCurrencyId) as Currency
-  const outputCurrency = useCurrency(outputCurrencyId) as Currency
+  const inputCurrency = useCurrency(inputCurrencyId, inputCurrencyChainId) as Currency
+  const outputCurrency = useCurrency(outputCurrencyId, inputCurrencyChainId) as Currency
   return { inputCurrency, outputCurrency }
 }
 
@@ -138,10 +140,10 @@ const SwapCommitButtonInner = memo(function SwapCommitButtonInner({
 }: SwapCommitButtonPropsType & CommitButtonProps) {
   const { address: account } = useAccount()
   const { t } = useTranslation()
-  const chainId = useChainId()
+  const { intentModal, allowanceModal } = useArcana()
   // form data
   const { independentField } = useSwapState()
-  const [inputCurrency, outputCurrency, inputCurrencyChain, outputCurrencyChain] = useSwapCurrency()
+  const [inputCurrency, outputCurrency, inputCurrencyChainId] = useSwapCurrency()
   const { isExpertMode } = useSwapConfig()
   const { isRecipientEmpty, isRecipientError } = useIsRecipientError()
 
@@ -166,9 +168,11 @@ const SwapCommitButtonInner = memo(function SwapCommitButtonInner({
     }),
     [relevantTokenBalances],
   )
+
+  const { independentField: field, typedValue } = useSwapState()
+
   const parsedAmounts = useParsedAmounts(order?.trade, currencyBalances, false)
   const parsedIndependentFieldAmount = parsedAmounts[independentField]
-  const swapInputError = useSwapInputError(order, currencyBalances)
   const [tradeToConfirm, setTradeToConfirm] = useState<PriceOrder | undefined>(undefined)
   const [indirectlyOpenConfirmModalState, setIndirectlyOpenConfirmModalState] = useState(false)
 
@@ -190,7 +194,11 @@ const SwapCommitButtonInner = memo(function SwapCommitButtonInner({
   )
 
   const { callToAction, confirmState, txHash, orderHash, confirmActions, errorMessage, resetState } =
-    useConfirmModalState(orderToExecute, amountToApprove?.wrapped, getUniversalRouterAddress(chainId))
+    useConfirmModalState(
+      orderToExecute,
+      amountToApprove?.wrapped,
+      getUniversalRouterAddress(inputCurrencyChainId ?? ChainId.ARBITRUM_ONE),
+    )
 
   const { onUserInput } = useSwapActionHandlers()
   const reset = useCallback(() => {
@@ -215,7 +223,8 @@ const SwapCommitButtonInner = memo(function SwapCommitButtonInner({
     () => (isClassicOrder(order) && !((order.trade?.routes?.length ?? 0) > 0)) || hasNoValidRouteError,
     [order, hasNoValidRouteError],
   )
-  const isValid = useMemo(() => !swapInputError && !tradeLoading, [swapInputError, tradeLoading])
+
+  const isValid = useMemo(() => !tradeLoading, [tradeLoading])
   const disabled = useMemo(
     () => !isValid || (priceImpactSeverity > 3 && !isExpertMode) || isRecipientEmpty || isRecipientError,
     [isExpertMode, isRecipientEmpty, isRecipientError, isValid, priceImpactSeverity],
@@ -250,6 +259,8 @@ const SwapCommitButtonInner = memo(function SwapCommitButtonInner({
       onConfirm={onConfirm}
       openSettingModal={openSettingModal}
       customOnDismiss={reset}
+      intentModal={intentModal}
+      allowanceModal={allowanceModal}
     />,
     true,
     true,
@@ -279,8 +290,8 @@ const SwapCommitButtonInner = memo(function SwapCommitButtonInner({
   const buttonText = useMemo(() => {
     if (isRecipientEmpty) return t('Enter a recipient')
     if (isRecipientError) return t('Invalid recipient')
+    if (field === Field.INPUT && (typedValue === '0' || !typedValue)) return t('Enter an amount')
     return (
-      swapInputError ||
       (tradeLoading && <Dots>{t('Searching For The Best Price')}</Dots>) ||
       (priceImpactSeverity > 3 && !isExpertMode
         ? t('Price Impact Too High')
@@ -288,7 +299,7 @@ const SwapCommitButtonInner = memo(function SwapCommitButtonInner({
         ? t('Swap Anyway')
         : t('Swap'))
     )
-  }, [isExpertMode, isRecipientEmpty, isRecipientError, priceImpactSeverity, swapInputError, t, tradeLoading])
+  }, [isExpertMode, isRecipientEmpty, isRecipientError, priceImpactSeverity, t, tradeLoading])
 
   if (noRoute && userHasSpecifiedInputOutput && (hasNoValidRouteError || !tradeLoading)) {
     return <ResetRoutesButton />

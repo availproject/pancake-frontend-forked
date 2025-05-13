@@ -13,8 +13,8 @@ import {
   useMatchBreakpoints,
   useModal,
 } from '@pancakeswap/uikit'
-import { formatAmount } from '@pancakeswap/utils/formatFractions'
 import { ChainLogo, CurrencyLogo, DoubleCurrencyLogo, SwapUIV2 } from '@pancakeswap/widgets-internal'
+import { useArcana } from 'contexts/ArcanaProvider'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { styled } from 'styled-components'
 
@@ -25,7 +25,6 @@ import { StablePair } from 'views/AddLiquidity/AddStableLiquidity/hooks/useStabl
 
 import { RiskInputPanelDisplay } from 'components/AccessRisk/SwapRevampRiskDisplay'
 import { FiatLogo } from 'components/Logo/CurrencyLogo'
-import { useCurrencyBalance } from 'state/wallet/hooks'
 import { useAccount } from 'wagmi'
 import CurrencySearchModal from '../SearchModal/CurrencySearchModal'
 import { FONT_SIZE, LOGO_SIZE, useFontSize } from './state'
@@ -159,7 +158,7 @@ interface CurrencyInputPanelProps {
   label?: string
   onCurrencySelect?: (currency: Currency, chainId?: ChainId) => void
   currency?: Currency | null
-  chainId?: ChainId | undefined
+  chainId?: ChainId
   disableCurrencySelect?: boolean
   hideBalance?: boolean
   pair?: Pair | StablePair | null
@@ -220,13 +219,15 @@ const CurrencyInputPanelSimplify = memo(function CurrencyInputPanel({
   const { address: account } = useAccount()
   // const value = useRef<string | undefined>(defaultValue)
   const [value, setValue] = useState<string | undefined>(defaultValue)
-
-  const selectedCurrencyBalance = useCurrencyBalance(account ?? undefined, currency ?? undefined)
+  const [allBalances, setAllBalances] = useState<any[] | null>(null)
+  const fetchInterval = useRef<boolean | null>(null)
   const { t } = useTranslation()
 
   const mode = id
   const token = pair ? pair.liquidityToken : currency?.isToken ? currency : null
   const [isInputFocus, setIsInputFocus] = useState(false)
+
+  const { ca } = useArcana()
 
   const amountInDollar = useStablecoinPriceAmount(
     showUSDPrice ? currency ?? undefined : undefined,
@@ -268,6 +269,33 @@ const CurrencyInputPanelSimplify = memo(function CurrencyInputPanel({
   }, [defaultValue, isInputFocus])
 
   useEffect(() => {
+    const fetchBalances = async () => {
+      if (ca) {
+        try {
+          const balances = await ca.getUnifiedBalances()
+          setAllBalances(balances || [])
+        } catch (balanceError) {
+          console.error('Failed to fetch unified balances:', balanceError)
+          setAllBalances(null)
+        }
+      } else {
+        setAllBalances(null)
+      }
+    }
+    if (fetchInterval.current === null || !!fetchInterval.current) {
+      fetchBalances()
+      fetchInterval.current = true
+    }
+    const interval = setInterval(() => {
+      if (fetchInterval.current) {
+        fetchBalances()
+      }
+    }, 5000)
+
+    return () => clearInterval(interval)
+  }, [ca, account, fetchInterval])
+
+  useEffect(() => {
     if (isInputFocus) {
       onUserInput(value ?? '')
     }
@@ -301,16 +329,39 @@ const CurrencyInputPanelSimplify = memo(function CurrencyInputPanel({
     }
   }, [onPresentCurrencyModal, disableCurrencySelect])
 
+  const currentBalance = useMemo(() => {
+    if (!allBalances || !currency) {
+      return null
+    }
+    const filteredBalances = allBalances.filter((balance) => balance.symbol === currency.symbol)
+    return filteredBalances.length > 0 ? filteredBalances : null
+  }, [allBalances, currency])
+
   const balance = useMemo(
     () =>
+      !hideBalance && !!currency && currentBalance?.[0]?.balance && !isUndefinedOrNull(currentBalance?.[0]?.balance)
+        ? currentBalance?.[0]?.balance
+        : undefined,
+    [currentBalance, currency, hideBalance],
+  )
+
+  const balanceOnSelectedChain = useMemo(() => {
+    if (
       !hideBalance &&
       !!currency &&
-      selectedCurrencyBalance &&
-      !isUndefinedOrNull(selectedCurrencyBalance?.currency?.decimals)
-        ? formatAmount(selectedCurrencyBalance, selectedCurrencyBalance?.currency?.decimals)
-        : undefined,
-    [selectedCurrencyBalance, currency, hideBalance],
-  )
+      currentBalance?.[0]?.balance &&
+      !isUndefinedOrNull(currentBalance?.[0]?.balance)
+    ) {
+      const balance_ = currentBalance?.[0]
+      const selectedChainBalance = balance_?.breakdown?.filter((balanceItem) => balanceItem?.chain?.id === chainId)
+      return {
+        symbol: currency?.symbol,
+        selectedBalance: selectedChainBalance?.[0]?.balance,
+        chainName: selectedChainBalance?.[0]?.chain?.name,
+      }
+    }
+    return undefined
+  }, [currentBalance, currency, hideBalance])
 
   return (
     <SwapUIV2.CurrencyInputPanelSimplify
@@ -334,8 +385,11 @@ const CurrencyInputPanelSimplify = memo(function CurrencyInputPanel({
                   !isInputFocus || !onMax ? (
                     <SwapUIV2.WalletAssetDisplay
                       isUserInsufficientBalance={isUserInsufficientBalance}
-                      balance={balance}
                       onMax={onMax}
+                      symbol={balanceOnSelectedChain?.symbol}
+                      balance={balance}
+                      balanceOnSelectedChain={balanceOnSelectedChain?.selectedBalance}
+                      chainName={balanceOnSelectedChain?.chainName}
                     />
                   ) : (
                     <SwapUIV2.AssetSettingButtonList onPercentInput={handlePercentInput} />

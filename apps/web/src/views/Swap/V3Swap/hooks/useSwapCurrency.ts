@@ -1,9 +1,8 @@
 import { ChainId } from '@pancakeswap/chains'
 import { Currency } from '@pancakeswap/swap-sdk-core'
-import { useCurrency, useSwapChain } from 'hooks/Tokens'
+import { useCurrency } from 'hooks/Tokens'
 import { Field } from 'state/swap/actions'
 import { useSwapState } from 'state/swap/hooks'
-import { Chain } from 'viem/chains'
 
 export const useSwapCurrencyIds = (): [
   string | undefined,
@@ -22,15 +21,13 @@ export const useSwapCurrencyIds = (): [
 export const useSwapCurrency = (): [
   Currency | undefined,
   Currency | undefined,
-  Chain | undefined,
-  Chain | undefined,
+  ChainId | undefined,
+  ChainId | undefined,
 ] => {
   const [inputCurrencyId, outputCurrencyId, inputCurrencyChainId, outputCurrencyChainId] = useSwapCurrencyIds()
 
-  const inputCurrency = useCurrency(inputCurrencyId) as Currency
-  const outputCurrency = useCurrency(outputCurrencyId) as Currency
-  const { chain: inputCurrencyChain } = useSwapChain(inputCurrencyChainId)
-  const { chain: outputCurrencyChain } = useSwapChain(outputCurrencyChainId)
+  const inputCurrency = useCurrency(inputCurrencyId, inputCurrencyChainId) as Currency
+  const outputCurrency = useCurrency(outputCurrencyId, inputCurrencyChainId) as Currency
 
-  return [inputCurrency, outputCurrency, inputCurrencyChain, outputCurrencyChain]
+  return [inputCurrency, outputCurrency, inputCurrencyChainId, outputCurrencyChainId]
 }

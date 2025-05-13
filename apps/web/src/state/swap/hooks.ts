@@ -1,6 +1,6 @@
 import { useTranslation } from '@pancakeswap/localization'
 import { ChainId, Currency, CurrencyAmount, Price, Trade, TradeType } from '@pancakeswap/sdk'
-import { USDT, lineaTokens } from '@pancakeswap/tokens'
+import { USDC, USDT } from '@pancakeswap/tokens'
 import { PairDataTimeWindowEnum } from '@pancakeswap/uikit'
 import tryParseAmount from '@pancakeswap/utils/tryParseAmount'
 import { useQuery } from '@tanstack/react-query'
@@ -221,6 +221,7 @@ export function queryParametersToSwapState(
     typeof parsedQs.outputCurrency === 'string'
       ? safeGetAddress(parsedQs.outputCurrency) || nativeSymbol
       : defaultOutputCurrency
+
   if (inputCurrency === outputCurrency) {
     if (typeof parsedQs.outputCurrency === 'string') {
       inputCurrency = ''
@@ -230,7 +231,6 @@ export function queryParametersToSwapState(
   }
 
   const recipient = validatedRecipient(parsedQs.recipient)
-
   return {
     [Field.INPUT]: {
       currencyId: inputCurrency,
@@ -253,28 +253,42 @@ export function useDefaultsFromURLSearch():
   | { inputCurrencyId: string | undefined; outputCurrencyId: string | undefined }
   | undefined {
   const { chainId } = useActiveChainId()
+
   const [, dispatch] = useAtom(swapReducerAtom)
   const { query, isReady } = useRouter()
   const [result, setResult] = useState<
-    { inputCurrencyId: string | undefined; outputCurrencyId: string | undefined } | undefined
+    | {
+        inputCurrencyId: string | undefined
+        outputCurrencyId: string | undefined
+        displayInputCurrencyId: string | undefined
+        displayOutputCurrencyId: string | undefined
+      }
+    | undefined
   >()
 
   useEffect(() => {
     if (!chainId || !isReady) return
-    const parsed = queryParametersToSwapState(query, lineaTokens.weth.address, USDT[chainId]?.address)
-
+    const parsed = queryParametersToSwapState(query, USDT[ChainId.ARBITRUM_ONE]?.address, USDC[ChainId.BASE]?.address)
+    console.log('parsed', parsed)
     dispatch(
       replaceSwapState({
         typedValue: parsed.typedValue,
         field: parsed.independentField,
         inputCurrencyId: parsed[Field.INPUT].currencyId,
+        displayInputCurrencyId: USDT[chainId]?.address,
         outputCurrencyId: parsed[Field.OUTPUT].currencyId,
-        inputCurrencyChainId: ChainId.BASE,
-        outputCurrencyChainId: ChainId.ARBITRUM_ONE,
+        displayOutputCurrencyId: USDC[chainId]?.address,
+        inputCurrencyChainId: parsed[Field.INPUT].chainId ?? ChainId.ARBITRUM_ONE,
+        outputCurrencyChainId: parsed[Field.OUTPUT].chainId ?? ChainId.BASE,
         recipient: null,
       }),
     )
-    setResult({ inputCurrencyId: parsed[Field.INPUT].currencyId, outputCurrencyId: parsed[Field.OUTPUT].currencyId })
+    setResult({
+      inputCurrencyId: parsed[Field.INPUT].currencyId,
+      outputCurrencyId: parsed[Field.OUTPUT].currencyId,
+      displayInputCurrencyId: USDT[ChainId.ARBITRUM_ONE]?.address,
+      displayOutputCurrencyId: USDC[ChainId.BASE]?.address,
+    })
   }, [dispatch, chainId, query, isReady])
 
   return result

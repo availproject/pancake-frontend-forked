@@ -10,10 +10,10 @@ import { usePermit2Details } from './usePermit2Details'
 
 const EXPIRES_BUFFER = 60n * 15n // 15 minutes in seconds
 
-export const usePermit2Requires = (amount: CurrencyAmount<Token> | undefined, spender?: Address) => {
+export const usePermit2Requires = (amount: CurrencyAmount<Token> | undefined, spender?: Address, chainId?: number) => {
   const { account } = useAccountActiveChain()
   const { allowance, refetch } = usePermit2Allowance(account, amount?.currency)
-  const { data } = usePermit2Details(account, amount?.currency, spender)
+  const { data } = usePermit2Details(account, amount?.currency, spender, chainId!)
   const { amount: permitAmount, expiration = 0n } = data ?? {}
   const now = useCurrentBlockTimestamp() ?? 0n
 

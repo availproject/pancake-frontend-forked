@@ -587,8 +587,7 @@ export function useBestTradeFromApi({
   const deferQuotientRaw = useDeferredValue(amount?.quotient?.toString())
   const deferQuotient = useDebounce(deferQuotientRaw, 500)
   const { address } = useAccount()
-  const { gasPrice } = useFeeDataWithGasPrice()
-
+  const { gasPrice } = useFeeDataWithGasPrice(currency?.chainId)
   const previousEnabled = usePreviousValue(enabled)
 
   return useQuery({

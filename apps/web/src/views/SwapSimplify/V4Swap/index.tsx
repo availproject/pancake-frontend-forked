@@ -5,9 +5,9 @@ import { SwapUIV2 } from '@pancakeswap/widgets-internal'
 import { useTokenRisk } from 'components/AccessRisk'
 import { RiskDetailsPanel, useShouldRiskPanelDisplay } from 'components/AccessRisk/SwapRevampRiskDisplay'
 
+import { ChainId } from '@pancakeswap/chains'
 import { GasTokenSelector } from 'components/Paymaster/GasTokenSelector'
 import { useCurrency } from 'hooks/Tokens'
-import { useActiveChainId } from 'hooks/useActiveChainId'
 import { useAutoSlippageWithFallback } from 'hooks/useAutoSlippageWithFallback'
 import { useCurrencyUsdPrice } from 'hooks/useCurrencyUsdPrice'
 import { usePaymaster } from 'hooks/usePaymaster'
@@ -48,7 +48,6 @@ export function V4SwapForm() {
   } = useAllTypeBestTrade()
 
   const isWrapping = useIsWrapping()
-  const { chainId: activeChianId } = useActiveChainId()
   const isUserInsufficientBalance = useUserInsufficientBalance(bestOrder)
   const { shouldShowBuyCrypto, buyCryptoLink } = useBuyCryptoInfo(bestOrder)
 
@@ -111,13 +110,14 @@ export function V4SwapForm() {
       afterCommit: resumeQuoting,
     }
   }, [pauseQuoting, resumeQuoting, xOrder, ammOrder, inputUsdPrice, outputUsdPrice, betterOrder?.type])
+
   const {
-    [Field.INPUT]: { currencyId: inputCurrencyId },
+    [Field.INPUT]: { currencyId: inputCurrencyId, chainId: inputCurrencyChainId },
     [Field.OUTPUT]: { currencyId: outputCurrencyId },
   } = useSwapState()
-  const inputCurrency = useCurrency(inputCurrencyId)
-  const outputCurrency = useCurrency(outputCurrencyId)
 
+  const inputCurrency = useCurrency(inputCurrencyId, inputCurrencyChainId ?? ChainId.ARBITRUM_ONE)
+  const outputCurrency = useCurrency(outputCurrencyId, inputCurrencyChainId ?? ChainId.ARBITRUM_ONE)
   const { slippageTolerance: userSlippageTolerance } = useAutoSlippageWithFallback()
   const isSlippageTooHigh = useMemo(() => userSlippageTolerance > 500, [userSlippageTolerance])
   const shouldRiskPanelDisplay = useShouldRiskPanelDisplay(inputCurrency?.wrapped, outputCurrency?.wrapped)
@@ -125,7 +125,6 @@ export function V4SwapForm() {
   const token1Risk = useTokenRisk(outputCurrency?.wrapped)
 
   const { isPaymasterAvailable } = usePaymaster()
-
   return (
     <SwapUIV2.SwapFormWrapper>
       <SwapUIV2.SwapTabAndInputPanelWrapper>
@@ -180,7 +179,7 @@ export function V4SwapForm() {
               <RefreshButton
                 onRefresh={refreshOrder}
                 refreshDisabled={refreshDisabled}
-                chainId={activeChianId}
+                chainId={inputCurrencyChainId}
                 loading={!tradeLoaded}
               />
               <PricingAndSlippage

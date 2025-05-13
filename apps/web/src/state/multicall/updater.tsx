@@ -1,11 +1,12 @@
 import { useDebounce } from '@pancakeswap/hooks'
-import { useActiveChainId } from 'hooks/useActiveChainId'
+import { useWorker } from 'hooks/useWorker'
 import { useAtom } from 'jotai'
 import { useEffect, useMemo, useRef } from 'react'
 import { useCurrentBlock } from 'state/block/hooks'
 import { multicallReducerAtom, MulticallState } from 'state/multicall/reducer'
-import { useWorker } from 'hooks/useWorker'
 
+import { Field } from 'state/swap/actions'
+import { useSwapState } from 'state/swap/hooks'
 import { useMulticallContract } from '../../hooks/useContract'
 import {
   Call,
@@ -89,18 +90,20 @@ export default function Updater(): null {
   // wait for listeners to settle before triggering updates
   const debouncedListeners = useDebounce(state.callListeners, 100)
   const currentBlock = useCurrentBlock()
-  const { chainId } = useActiveChainId()
+  const {
+    [Field.INPUT]: { chainId: inputCurrencyChainId },
+  } = useSwapState()
   const multicallContract = useMulticallContract()
   const cancellations = useRef<{ blockNumber: number; cancellations: (() => void)[] }>()
   const worker = useWorker()
 
   const listeningKeys: { [callKey: string]: number } = useMemo(() => {
-    return activeListeningKeys(debouncedListeners, chainId)
-  }, [debouncedListeners, chainId])
+    return activeListeningKeys(debouncedListeners, inputCurrencyChainId)
+  }, [debouncedListeners, inputCurrencyChainId])
 
   const unserializedOutdatedCallKeys = useMemo(() => {
-    return outdatedListeningKeys(state.callResults, listeningKeys, chainId, currentBlock)
-  }, [chainId, state.callResults, listeningKeys, currentBlock])
+    return outdatedListeningKeys(state.callResults, listeningKeys, inputCurrencyChainId, currentBlock)
+  }, [inputCurrencyChainId, state.callResults, listeningKeys, currentBlock])
 
   const serializedOutdatedCallKeys = useMemo(
     () => JSON.stringify(unserializedOutdatedCallKeys.sort()),
@@ -108,7 +111,7 @@ export default function Updater(): null {
   )
 
   useEffect(() => {
-    if (!worker || !currentBlock || !chainId || !multicallContract) return
+    if (!worker || !currentBlock || !inputCurrencyChainId || !multicallContract) return
 
     const outdatedCallKeys: string[] = JSON.parse(serializedOutdatedCallKeys)
     if (outdatedCallKeys.length === 0) return
@@ -123,7 +126,7 @@ export default function Updater(): null {
     dispatch(
       fetchingMulticallResults({
         calls,
-        chainId,
+        chainId: inputCurrencyChainId,
         fetchingBlockNumber: currentBlock,
       }),
     )
@@ -134,7 +137,7 @@ export default function Updater(): null {
         const { cancel, promise } = retry(
           () =>
             worker.fetchChunk({
-              chainId,
+              chainId: inputCurrencyChainId,
               chunk,
               minBlockNumber: currentBlock,
             }),
@@ -170,7 +173,7 @@ export default function Updater(): null {
             if (Object.keys(results).length > 0) {
               dispatch(
                 updateMulticallResults({
-                  chainId,
+                  chainId: inputCurrencyChainId,
                   results,
                   blockNumber: fetchBlockNumber,
                 }),
@@ -181,7 +184,7 @@ export default function Updater(): null {
               dispatch(
                 errorFetchingMulticallResults({
                   calls: erroredCalls,
-                  chainId,
+                  chainId: inputCurrencyChainId,
                   fetchingBlockNumber: fetchBlockNumber,
                 }),
               )
@@ -195,11 +198,11 @@ export default function Updater(): null {
               console.debug('Cancelled fetch for blockNumber', currentBlock)
               return
             }
-            console.error('Failed to fetch multicall chunk', chunk, chainId, error, currentBlock)
+            console.error('Failed to fetch multicall chunk', chunk, inputCurrencyChainId, error, currentBlock)
             dispatch(
               errorFetchingMulticallResults({
                 calls: chunk,
-                chainId,
+                chainId: inputCurrencyChainId,
                 fetchingBlockNumber: currentBlock,
               }),
             )
@@ -207,7 +210,7 @@ export default function Updater(): null {
         return cancel
       }),
     }
-  }, [worker, chainId, multicallContract, dispatch, serializedOutdatedCallKeys, currentBlock])
+  }, [worker, inputCurrencyChainId, multicallContract, dispatch, serializedOutdatedCallKeys, currentBlock])
 
   return null
 }

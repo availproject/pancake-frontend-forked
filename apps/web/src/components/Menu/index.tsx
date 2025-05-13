@@ -7,17 +7,12 @@ import { useActiveChainId } from 'hooks/useActiveChainId'
 import { usePerpUrl } from 'hooks/usePerpUrl'
 import useTheme from 'hooks/useTheme'
 import { IdType, useUserNotUsCitizenAcknowledgement } from 'hooks/useUserIsUsCitizenAcknowledgement'
-import { useWebNotifications } from 'hooks/useWebNotifications'
 import { useRouter } from 'next/router'
-import { Suspense, lazy, useCallback, useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { styled } from 'styled-components'
-import GlobalSettings from './GlobalSettings'
-import { SettingsMode } from './GlobalSettings/types'
 import UserMenu from './UserMenu'
 import { UseMenuItemsParams, useMenuItems } from './hooks/useMenuItems'
 import { getActiveMenuItem, getActiveSubMenuChildItem, getActiveSubMenuItem } from './utils'
-
-const Notifications = lazy(() => import('views/Notifications'))
 
 const LinkComponent = (linkProps) => {
   return <NextLinkFromReactRouter to={linkProps.href} {...linkProps} prefetch={false} />
@@ -26,7 +21,7 @@ const LinkComponent = (linkProps) => {
 const Menu = (props) => {
   const { chainId } = useActiveChainId()
   const { isDark, setTheme } = useTheme()
-  const { currentLanguage, t } = useTranslation()
+  const { currentLanguage, setLanguage, t } = useTranslation()
   const { pathname } = useRouter()
   const perpUrl = usePerpUrl({ chainId, isDark, languageCode: currentLanguage.code })
   const [perpConfirmed] = useUserNotUsCitizenAcknowledgement(IdType.PERPETUALS)
@@ -87,7 +82,8 @@ const Menu = (props) => {
       isDark={isDark}
       toggleTheme={toggleTheme}
       currentLang={currentLanguage.code}
-      showCakePrice={false}
+      langs={languageList}
+      setLang={setLanguage}
       links={menuItems}
       subLinks={
         activeSubMenuItem?.overrideSubNavItems ??
@@ -100,6 +96,7 @@ const Menu = (props) => {
       activeItem={activeMenuItem?.href}
       activeSubItem={activeSubMenuItem?.href}
       activeSubItemChildItem={activeSubChildMenuItem?.href}
+      showCakePrice={false}
       showLangSelector={false}
       {...props}
     />
@@ -113,16 +110,9 @@ const SharedComponentWithOutMenuWrapper = styled.div`
 `
 
 export const SharedComponentWithOutMenu: React.FC<React.PropsWithChildren> = ({ children }) => {
-  const { enabled } = useWebNotifications()
   return (
     <>
       <SharedComponentWithOutMenuWrapper>
-        <GlobalSettings mode={SettingsMode.GLOBAL} />
-        {enabled && (
-          <Suspense fallback={null}>
-            <Notifications />
-          </Suspense>
-        )}
         <NetworkSwitcher />
         <UserMenu />
       </SharedComponentWithOutMenuWrapper>

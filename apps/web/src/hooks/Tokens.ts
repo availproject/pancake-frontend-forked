@@ -1,9 +1,8 @@
 /* eslint-disable no-param-reassign */
 import { ChainId } from '@pancakeswap/chains'
 import { Currency, ERC20Token, NATIVE, NativeCurrency, Token } from '@pancakeswap/sdk'
-import { type Address, zeroAddress } from 'viem'
-
 import { TokenAddressMap } from '@pancakeswap/token-lists'
+import { USDC, USDT } from '@pancakeswap/tokens'
 import { useReadContracts } from '@pancakeswap/wagmi'
 import { GELATO_NATIVE } from 'config/constants'
 import { UnsafeCurrency } from 'config/constants/types'
@@ -20,7 +19,7 @@ import {
 } from 'state/lists/hooks'
 import { safeGetAddress } from 'utils'
 import { chains as evmChains } from 'utils/wagmi'
-import { erc20Abi } from 'viem'
+import { type Address, erc20Abi, zeroAddress } from 'viem'
 import useUserAddedTokens, { useUserAddedTokensByChainIds } from '../state/user/hooks/useUserAddedTokens'
 import { useActiveChainId } from './useActiveChainId'
 import useNativeCurrency from './useNativeCurrency'
@@ -218,13 +217,11 @@ export function useIsUserAddedToken(currency: Currency | undefined | null): bool
   return !!userAddedTokens.find((token) => currency?.equals(token))
 }
 
-export function useToken(tokenAddress?: string): ERC20Token | undefined | null {
-  const { chainId } = useActiveChainId()
-  return useTokenByChainId(tokenAddress, chainId)
+export function useToken(tokenAddress?: string, chainId?: number): ERC20Token | undefined | null {
+  const { chainId: activeChainId } = useActiveChainId()
+  return useTokenByChainId(tokenAddress, chainId ?? activeChainId)
 }
-// undefined if invalid or does not exist
-// null if loading
-// otherwise returns the token
+
 export function useTokenByChainId(tokenAddress?: string, chainId?: number): ERC20Token | undefined | null {
   const unsupportedTokens = useUnsupportedTokens()
   const tokens = useAllTokensByChainIds(chainId ? [chainId] : [])
@@ -285,14 +282,35 @@ export function useOnRampToken(currencyId?: string): Currency | undefined {
   }, [token, chainId, currencyId])
 }
 
-export function useCurrency(currencyId: string | undefined): UnsafeCurrency {
+export const useGetAssociatedCurrency = (activeChainId: ChainId, currency?: Currency) => {
+  const associatedCurrency = useCurrency(
+    currency?.symbol === 'USDT'
+      ? USDT[activeChainId]?.address
+      : currency?.symbol === 'USDC'
+      ? USDC[activeChainId]?.address
+      : currency?.wrapped?.address,
+  )
+  return associatedCurrency
+}
+
+export function useCurrency(currencyId: string | undefined, chainId?: ChainId): UnsafeCurrency {
   const native: NativeCurrency = useNativeCurrency()
   const isNative =
     currencyId?.toUpperCase() === native.symbol?.toUpperCase() ||
     currencyId?.toLowerCase() === GELATO_NATIVE ||
     currencyId?.toLowerCase() === zeroAddress
+  const token = useToken(isNative ? undefined : currencyId, chainId)
+  return isNative ? native : token
+}
 
-  const token = useToken(isNative ? undefined : currencyId)
+export function useOnRampCurrency(currencyId: string | undefined): NativeCurrency | Currency | null | undefined {
+  const native: NativeCurrency = useNativeCurrency()
+  const isNative =
+    currencyId?.toUpperCase() === native.symbol?.toUpperCase() ||
+    currencyId?.toLowerCase() === GELATO_NATIVE ||
+    currencyId?.toLowerCase() === zeroAddress
+  const token = useOnRampToken(currencyId)
+
   return isNative ? native : token
 }
 
@@ -314,15 +332,4 @@ export function useSwapChain(chainId: ChainId | undefined, fieldType: 'input' | 
     chain: chain ?? (fieldType === 'input' ? evmChains[13] : evmChains[8]),
     symbol,
   }
-}
-
-export function useOnRampCurrency(currencyId: string | undefined): NativeCurrency | Currency | null | undefined {
-  const native: NativeCurrency = useNativeCurrency()
-  const isNative =
-    currencyId?.toUpperCase() === native.symbol?.toUpperCase() ||
-    currencyId?.toLowerCase() === GELATO_NATIVE ||
-    currencyId?.toLowerCase() === zeroAddress
-  const token = useOnRampToken(currencyId)
-
-  return isNative ? native : token
 }

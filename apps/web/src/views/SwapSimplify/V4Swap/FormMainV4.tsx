@@ -7,7 +7,7 @@ import { ReactNode, useCallback, useMemo } from 'react'
 
 import CurrencyInputPanelSimplify from 'components/CurrencyInputPanelSimplify'
 import { CommonBasesType } from 'components/SearchModal/types'
-import { useCurrency, useSwapChain } from 'hooks/Tokens'
+import { useSwapChain } from 'hooks/Tokens'
 import { Field } from 'state/swap/actions'
 import { useDefaultsFromURLSearch, useSwapState } from 'state/swap/hooks'
 import { useSwapActionHandlers } from 'state/swap/useSwapActionHandlers'
@@ -15,9 +15,11 @@ import { useCurrencyBalances } from 'state/wallet/hooks'
 import { currencyId } from 'utils/currencyId'
 import { maxAmountSpend } from 'utils/maxAmountSpend'
 
+import { useActiveChainId } from 'hooks/useActiveChainId'
 import { useAccount } from 'wagmi'
 import useWarningImport from '../../Swap/hooks/useWarningImport'
 import { useIsWrapping } from '../../Swap/V3Swap/hooks'
+import { useDisplayCurrencies } from '../hooks/useDisplayCurrencies'
 import { AssignRecipientButton, FlipButton } from './FlipButton'
 import { FormContainer } from './FormContainer'
 import { Recipient } from './Recipient'
@@ -35,20 +37,22 @@ export function FormMain({ inputAmount, outputAmount, tradeLoading, isUserInsuff
   const { address: account } = useAccount()
   const { t } = useTranslation()
   const warningSwapHandler = useWarningImport()
+  const { chainId: activeChainId } = useActiveChainId()
   const {
     independentField,
     typedValue,
     [Field.INPUT]: { currencyId: inputCurrencyId, chainId: inputCurrencyChainId },
     [Field.OUTPUT]: { currencyId: outputCurrencyId, chainId: outputCurrencyChainId },
   } = useSwapState()
-  const isWrapping = useIsWrapping()
-  const inputCurrency = useCurrency(inputCurrencyId)
-  const outputCurrency = useCurrency(outputCurrencyId)
-
   const { chain: inputChain } = useSwapChain(inputCurrencyChainId, 'input')
   const { chain: outputChain } = useSwapChain(outputCurrencyChainId, 'output')
+  const isWrapping = useIsWrapping()
+  const { inputCurrency: displayInputCurrency, outputCurrency: displayOutputCurrency } = useDisplayCurrencies()
 
-  const { onCurrencySelection, onUserInput } = useSwapActionHandlers()
+  // Use display currencies if provided, otherwise fall back to actual currencies
+  const inputCurrency = displayInputCurrency
+  const outputCurrency = displayOutputCurrency
+  const { onCurrencySelection, onUserInput } = useSwapActionHandlers(activeChainId)
   const [inputBalance] = useCurrencyBalances(account, [inputCurrency, outputCurrency])
   const maxAmountInput = useMemo(() => maxAmountSpend(inputBalance), [inputBalance])
   const loadedUrlParams = useDefaultsFromURLSearch()
@@ -145,13 +149,13 @@ export function FormMain({ inputAmount, outputAmount, tradeLoading, isUserInsuff
         showMaxButton
         showCommonBases
         inputLoading={!isWrapping && inputLoading}
+        chainId={inputChain?.id}
         currencyLoading={!loadedUrlParams}
         label={!isTypingInput && !isWrapping ? t('From (estimated)') : t('From')}
         defaultValue={isWrapping ? typedValue : inputValue}
         maxAmount={maxAmountInput}
         showQuickInputButton
         currency={inputCurrency}
-        chainId={inputChain?.id}
         onUserInput={handleTypeInput}
         onPercentInput={handlePercentInput}
         onMax={handleMaxInput}
@@ -173,12 +177,12 @@ export function FormMain({ inputAmount, outputAmount, tradeLoading, isUserInsuff
         showUSDPrice
         showCommonBases
         showMaxButton={false}
+        chainId={outputChain?.id}
         inputLoading={!isWrapping && outputLoading}
         currencyLoading={!loadedUrlParams}
         label={isTypingInput && !isWrapping ? t('To (estimated)') : t('To')}
         defaultValue={isWrapping ? typedValue : outputValue}
         currency={outputCurrency}
-        chainId={outputChain?.id}
         onUserInput={handleTypeOutput}
         onCurrencySelect={handleOutputSelect}
         otherCurrency={inputCurrency}
