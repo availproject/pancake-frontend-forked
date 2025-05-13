@@ -182,7 +182,6 @@ interface CurrencyInputPanelProps {
   title?: React.ReactNode
   hideBalanceComp?: boolean
   isUserInsufficientBalance?: boolean
-  enableChainIdSelect?: boolean
 }
 const CurrencyInputPanelSimplify = memo(function CurrencyInputPanel({
   defaultValue,
@@ -195,7 +194,6 @@ const CurrencyInputPanelSimplify = memo(function CurrencyInputPanel({
   chainId,
   disableCurrencySelect = false,
   hideBalance = false,
-  enableChainIdSelect = false,
   beforeButton,
   pair = null, // used for double token logo
   otherCurrency,
@@ -251,7 +249,6 @@ const CurrencyInputPanelSimplify = memo(function CurrencyInputPanel({
       tokensToShow={tokensToShow}
       mode={mode}
       showCurrencyInHeader
-      enableChainIdSelect
     />,
   )
 

@@ -167,7 +167,6 @@ export function FormMain({ inputAmount, outputAmount, tradeLoading, isUserInsuff
             {t('From')}
           </Text>
         }
-        enableChainIdSelect
         isUserInsufficientBalance={isUserInsufficientBalance}
       />
 
@@ -192,7 +191,6 @@ export function FormMain({ inputAmount, outputAmount, tradeLoading, isUserInsuff
             {t('To')}
           </Text>
         }
-        enableChainIdSelect
       />
 
       <AssignRecipientButton />
